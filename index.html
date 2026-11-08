@@ -143,12 +143,15 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 /* Die 3D-Tiefe ragt nach rechts und GYM ist eingerückt: Schriftzug etwas nach links, damit er optisch mittig sitzt */
 #start .record-word { translate: -8% 0; }
 .start-tag { margin: 0; color: var(--r-ink); font-family: var(--body); font-size: 0.95rem; letter-spacing: 0.04em; }
+/* Start-Button im Look der Info-Chips (.record-time): gleiche Form, Farben, Schriften und Zweizeiligkeit */
 .start-btn {
-  font-family: var(--r-block); font-size: 1.9rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase;
-  color: var(--r-face); background: var(--r-plum); border: 0; border-radius: 999px;
-  padding: 18px 44px 14px; cursor: pointer; box-shadow: 6px 6px 0 var(--r-side);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--r-plum); color: #fff4dd; border: 0; border-radius: 999px;
+  padding: 10px 30px; cursor: pointer; box-shadow: 6px 6px 0 var(--r-side); font-family: var(--body);
   transition: transform .08s, box-shadow .08s;
 }
+.start-btn b { font-family: var(--r-block); font-weight: 400; font-size: 2.1rem; line-height: 1; letter-spacing: .03em; color: var(--r-face); text-transform: uppercase; }
+.start-btn span { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .start-btn:hover { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--r-side); }
 .start-btn:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0 var(--r-side); }
 .start-btn:focus-visible { outline: 3px solid var(--r-side); outline-offset: 4px; }
@@ -279,8 +282,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     </div>
     <p class="sr-only">Brain Gym</p>
     <p class="start-tag">Sudoku · drei Rätsel am Tag</p>
-    <button class="start-btn" id="start-btn" type="button">Los geht’s!</button>
-    <p class="start-info" id="start-info"></p>
+    <button class="start-btn" id="start-btn" type="button"><b id="start-label">Los geht’s!</b><span id="start-info"></span></button>
   </div>
 </div>
 
@@ -595,7 +597,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     const inProgress = !S.solved && S.values.some((v, k) => v && !S.puzzle[k]);
     $('start-info').textContent = done ? `Heute alle ${LIMIT} Rätsel geschafft`
       : `Heute: Rätsel ${Math.min(Math.max(daily().count, 1), LIMIT)} von ${LIMIT}`;
-    $('start-btn').textContent = inProgress ? 'Weiterspielen' : 'Los geht’s!';
+    $('start-label').textContent = inProgress ? 'Weiterspielen' : 'Los geht’s!';
     $('start-btn').addEventListener('click', () => {
       const el = $('start'); el.hidden = true; el.classList.remove('play');
       if (S.solved && limitReached()) showDaily();
