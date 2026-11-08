@@ -140,6 +140,21 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 .record-word .l2 { font-size: min(17vw, 11.5vh, 6rem); margin-left: 0.1em; }
 .record-word .l3 { font-size: min(18.5vw, 12.5vh, 6.5rem); margin-left: 1.15em; }
 .record-word .lb { font-size: min(17vw, 12vh, 6rem); margin-right: 1.6em; }
+.record-word .ls1 { font-size: min(18vw, 13vh, 6.5rem); margin-right: 0.5em; }
+.record-word .ls2 { font-size: min(25vw, 18vh, 9rem); margin-left: 1em; }
+#start { cursor: default; }
+.start-tag { margin: 0; color: var(--r-ink); font-family: var(--body); font-size: 0.95rem; letter-spacing: 0.04em; }
+.start-btn {
+  font-family: var(--r-block); font-size: 1.9rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase;
+  color: var(--r-face); background: var(--r-plum); border: 0; border-radius: 999px;
+  padding: 18px 44px 14px; cursor: pointer; box-shadow: 6px 6px 0 var(--r-side);
+  transition: transform .08s, box-shadow .08s;
+}
+.start-btn:hover { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--r-side); }
+.start-btn:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0 var(--r-side); }
+.start-btn:focus-visible { outline: 3px solid var(--r-side); outline-offset: 4px; }
+.start-info { margin: 0; color: var(--r-ink); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.record.play .start-btn { animation: rise .5s ease-out .45s both; }
 .record-word .lm { font-size: min(14vw, 12.5vh, 6.25rem); margin-left: 0.5em; }
 .record-time {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -254,6 +269,19 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     <p class="sr-only">New best time!</p>
     <div class="record-time"><b id="record-time">00:00</b><span id="record-prev"></span></div>
     <p class="record-close">Tippen zum Schließen</p>
+  </div>
+</div>
+
+<div class="record play" id="start" role="dialog" aria-label="Brain Gym">
+  <div class="record-inner">
+    <div class="record-word" aria-hidden="true">
+      <div class="line ls1"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">R</span><span style="--i:2">A</span><span style="--i:3; translate:0 -6px">I</span><span style="--i:4">N</span></div>
+      <div class="line ls2"><span style="--i:5; translate:0 -4px">G</span><span style="--i:6">Y</span><span style="--i:7; translate:0 6px">M</span></div>
+    </div>
+    <p class="sr-only">Brain Gym</p>
+    <p class="start-tag">Sudoku · drei Rätsel am Tag</p>
+    <button class="start-btn" id="start-btn" type="button">Los geht’s!</button>
+    <p class="start-info" id="start-info"></p>
   </div>
 </div>
 
@@ -523,7 +551,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   function startTimer() {
     stopTimer();
     if (S.solved) return;
-    timerId = setInterval(() => { if (document.hidden) return; S.seconds++; $('timer').textContent = fmt(S.seconds); if (S.seconds % 5 === 0) save(); }, 1000);
+    timerId = setInterval(() => { if (document.hidden || !$('start').hidden) return; S.seconds++; $('timer').textContent = fmt(S.seconds); if (S.seconds % 5 === 0) save(); }, 1000);
   }
   function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; }
 
@@ -538,6 +566,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 
   document.addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('.levels')) return;
+    if (!$('start').hidden) return; // Start-Bildschirm offen: Eingaben gehen nicht ins Raster
     const k = e.key;
     if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -558,14 +587,26 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     const saved = (data && data.S) || store.get();
     if (saved && saved.solution && saved.values) {
       S = saved; render(); startTimer();
-      if (S.solved && limitReached()) showDaily();
     } else if (limitReached()) {
-      newGame('mittel'); showDaily(); // Spielstand fehlt, Kontingent aber verbraucht
+      newGame('mittel'); // Spielstand fehlt, Kontingent aber verbraucht
     } else requestNewGame('mittel');
+
+    // Start-Bildschirm: zeigt den Tagesstand; „Bis morgen!“ erst nach dem Tippen auf Start
+    const done = limitReached() && S.solved;
+    const inProgress = !S.solved && S.values.some((v, k) => v && !S.puzzle[k]);
+    $('start-info').textContent = done ? `Heute alle ${LIMIT} Rätsel geschafft`
+      : `Heute: Rätsel ${Math.min(Math.max(daily().count, 1), LIMIT)} von ${LIMIT}`;
+    $('start-btn').textContent = inProgress ? 'Weiterspielen' : 'Los geht’s!';
+    $('start-btn').addEventListener('click', () => {
+      const el = $('start'); el.hidden = true; el.classList.remove('play');
+      if (S.solved && limitReached()) showDaily();
+    });
+    $('start-btn').focus({ preventScroll: true });
+
     // Vorschau ohne echtes Ereignis: Link mit #rekord oder #morgen öffnen
     const demo = () => {
-      if (location.hash === '#rekord') celebrate(312, 405);
-      if (location.hash === '#morgen') showDaily();
+      if (location.hash === '#rekord') { $('start').hidden = true; celebrate(312, 405); }
+      if (location.hash === '#morgen') { $('start').hidden = true; showDaily(); }
     };
     demo(); window.addEventListener('hashchange', demo);
   }
