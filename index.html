@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Sudoku: drei Rätsel am Tag, vier Schwierigkeitsstufen, Notizen und Bestzeiten.">
+<meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11161d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brain Gym">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Brain Gym</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=Luckiest+Guy&display=swap">
+<style>
+/* Basis, die vorher das Artifact-Gerüst lieferte */
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font-size: 14px; -webkit-tap-highlight-color: transparent; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+
+/* Layout: one centred play column — header, grid, number pad; graph-paper ground, ink-blue pencil accent */
+:root {
+  --bg: #eef1f4;
+  --paper: #fbfcfd;
+  --ink: #1c2633;
+  --muted: #5d6b7c;
+  --line: #c9d1db;
+  --line-strong: #2b3a4d;
+  --accent: #7b2cbf;
+  --accent-soft: #efe2fa;
+  --peer: #e8edf3;
+  --same: #dcc3f3;
+  --error: #d9561a;
+  --error-soft: #fde4d3;
+  --good: #f9d342;
+  --good-side: #ec6a2a;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --paper: #18202a; --ink: #e6ebf1; --muted: #93a1b3;
+    --line: #2d3947; --line-strong: #8797ab; --accent: #c58af9; --accent-soft: #33224a;
+    --peer: #1f2935; --same: #4a2d6e; --error: #ff8a4c; --error-soft: #4a2615; --good: #f9d342;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --paper: #18202a; --ink: #e6ebf1; --muted: #93a1b3;
+  --line: #2d3947; --line-strong: #8797ab; --accent: #c58af9; --accent-soft: #33224a;
+  --peer: #1f2935; --same: #4a2d6e; --error: #ff8a4c; --error-soft: #4a2615; --good: #f9d342;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: var(--bg);
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px;
+}
+.app { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 2rem; letter-spacing: -0.02em; margin: 0; line-height: 1; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.stats { display: flex; gap: 16px; font-variant-numeric: tabular-nums; }
+.stat { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.stat b { font-size: 1.15rem; }
+.label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.levels { display: flex; gap: 6px; flex-wrap: wrap; }
+.levels button, .tool, .new {
+  font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line);
+  border-radius: 8px; cursor: pointer;
+}
+.levels button { padding: 7px 12px; font-size: 0.9rem; }
+.levels button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.new { margin-left: auto; padding: 7px 12px; font-size: 0.9rem; font-weight: 700; color: var(--accent); }
+button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.board-wrap { position: relative; }
+.board {
+  display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; width: 100%; max-width: 100%;
+  background: var(--paper); border: 2.5px solid var(--line-strong); border-radius: 6px; overflow: hidden;
+  box-shadow: 0 10px 30px -18px rgba(20, 30, 50, 0.45);
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
+}
+.cell {
+  position: relative; display: grid; place-items: center; border: 0; padding: 0; margin: 0;
+  border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  background: var(--paper); color: var(--accent); font-family: var(--body);
+  font-size: clamp(1.1rem, 6vw, 1.9rem); cursor: pointer; transition: background-color .12s;
+}
+.cell:nth-child(9n) { border-right: 0; }
+.cell:nth-child(9n+3), .cell:nth-child(9n+6) { border-right: 2px solid var(--line-strong); }
+.cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--line-strong); }
+.cell:nth-child(n+73) { border-bottom: 0; }
+.cell.given { color: var(--ink); font-weight: 700; }
+.cell.peer { background: var(--peer); }
+.cell.same { background: var(--same); }
+.cell.selected { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.cell.wrong { color: var(--error); background: var(--error-soft); }
+.cell.conflict { background: var(--error-soft); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- Rekord-Feier: verspielte 3D-Blockschrift, bewusst ein fester Look auf Weiß in beiden Themes ---- */
+.record {
+  --r-bg: #ffffff; --r-face: #f9d342; --r-side: #ec6a2a; --r-under: #b03cf0; --r-plum: #7b2cbf; --r-ink: #5b3a78;
+  --r-block: "Luckiest Guy", "Arial Black", Impact, sans-serif;
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; overflow: hidden;
+  background: var(--r-bg); cursor: pointer;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+}
+.record-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 36px; text-align: center; }
+.record-word {
+  display: flex; flex-direction: column; align-items: center; transform: rotate(-8deg) skewX(-4deg);
+  font-family: var(--r-block); color: var(--r-face); line-height: 0.86;
+}
+.record-word .line { display: flex; }
+.record-word .line span {
+  display: inline-block;
+  text-shadow:
+    .016em .016em 0 var(--r-side), .032em .032em 0 var(--r-side), .048em .048em 0 var(--r-side), .064em .064em 0 var(--r-side),
+    .08em .08em 0 var(--r-side), .096em .096em 0 var(--r-side), .112em .112em 0 var(--r-side), .128em .128em 0 var(--r-side),
+    .144em .144em 0 var(--r-side), .16em .16em 0 var(--r-side), .176em .176em 0 var(--r-side),
+    .016em .188em 0 var(--r-under), .032em .2em 0 var(--r-under), .048em .212em 0 var(--r-under), .064em .224em 0 var(--r-under),
+    .08em .236em 0 var(--r-under), .096em .248em 0 var(--r-under), .112em .26em 0 var(--r-under), .128em .272em 0 var(--r-under),
+    .144em .284em 0 var(--r-under), .16em .296em 0 var(--r-under), .176em .308em 0 var(--r-under);
+}
+.record-word .l1 { font-size: min(15vw, 10vh, 5.25rem); margin-right: 1.3em; }
+.record-word .l2 { font-size: min(17vw, 11.5vh, 6rem); margin-left: 0.1em; }
+.record-word .l3 { font-size: min(18.5vw, 12.5vh, 6.5rem); margin-left: 1.15em; }
+.record-word .lb { font-size: min(17vw, 12vh, 6rem); margin-right: 1.6em; }
+.record-word .lm { font-size: min(14vw, 12.5vh, 6.25rem); margin-left: 0.5em; }
+.record-time {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--r-plum); color: #fff4dd; border-radius: 999px;
+  padding: 10px 30px; box-shadow: 6px 6px 0 var(--r-side); font-family: var(--body);
+}
+.record-time b { font-family: var(--r-block); font-weight: 400; font-size: 2.1rem; line-height: 1; letter-spacing: .03em; color: var(--r-face); font-variant-numeric: tabular-nums; }
+.record-time span { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.record-close { margin: 0; color: var(--r-ink); font-size: 0.8rem; }
+
+.record.play .record-word { animation: pop .75s cubic-bezier(.2, 1.6, .4, 1) both; }
+.record.play .line span { animation: bob 2.2s ease-in-out infinite; animation-delay: calc(var(--i) * .12s + .8s); }
+.record.play .record-time { animation: rise .5s ease-out .45s both; }
+@keyframes pop { 0% { transform: rotate(-30deg) skewX(-4deg) scale(.1); opacity: 0; } 100% { transform: rotate(-8deg) skewX(-4deg) scale(1); opacity: 1; } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes rise { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .record.play * { animation: none !important; } }
+.notes { position: absolute; inset: 2px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+.notes i { font-style: normal; font-size: clamp(0.5rem, 2.3vw, 0.72rem); color: var(--muted); display: grid; place-items: center; line-height: 1; }
+.notes i.hl { color: var(--accent); font-weight: 700; }
+
+.overlay {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  background: color-mix(in srgb, var(--paper) 88%, transparent); border-radius: 6px; padding: 24px;
+}
+.overlay h2 {
+  font-family: "Luckiest Guy", "Arial Black", sans-serif; font-weight: 400; font-size: 3rem; line-height: 1;
+  margin: 0 0 14px; color: var(--good); transform: rotate(-4deg);
+  text-shadow: .02em .02em 0 var(--good-side), .04em .04em 0 var(--good-side), .06em .06em 0 var(--good-side), .08em .08em 0 var(--good-side),
+    .02em .1em 0 var(--accent), .04em .12em 0 var(--accent), .06em .14em 0 var(--accent), .08em .16em 0 var(--accent);
+}
+.overlay p { margin: 0 0 16px; color: var(--muted); }
+.overlay .new { margin: 0; }
+
+.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tool { padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.tool svg { width: 22px; height: 22px; stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tool[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.tool[aria-pressed="true"] svg { stroke: var(--accent); }
+.tool .badge { font-size: 0.65rem; font-weight: 700; letter-spacing: .06em; }
+
+.pad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+.pad button {
+  font: inherit; font-family: var(--display); font-weight: 500; font-size: clamp(1.3rem, 6vw, 1.8rem);
+  color: var(--accent); background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 0 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1;
+}
+.pad button small { font-family: var(--body); font-size: 0.62rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.pad button:disabled { opacity: 0.3; cursor: default; }
+.pad button:not(:disabled):active, .tool:active { transform: translateY(1px); }
+.hint-line { font-size: 0.8rem; color: var(--muted); text-align: center; margin: 0; }
+@media (max-width: 420px) { .pad { gap: 4px; } h1 { font-size: 1.6rem; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Brain <span>Gym</span></h1>
+    <div class="stats">
+      <div class="stat"><span class="label">Heute</span><b id="today">1 / 3</b></div>
+      <div class="stat"><span class="label">Bestzeit</span><b id="best">–</b></div>
+      <div class="stat"><span class="label">Zeit</span><b id="timer">00:00</b></div>
+    </div>
+  </header>
+
+  <div class="levels" role="group" aria-label="Schwierigkeit">
+    <button data-level="leicht" id="lv-leicht">Leicht</button>
+    <button data-level="mittel" id="lv-mittel">Mittel</button>
+    <button data-level="schwer" id="lv-schwer">Schwer</button>
+    <button data-level="experte" id="lv-experte">Experte</button>
+    <button class="new" id="new">Neues Spiel</button>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board" role="grid" aria-label="Sudoku-Raster"></div>
+    <div class="overlay" id="win" hidden>
+      <div>
+        <h2>Gelöst!</h2>
+        <p id="win-text"></p>
+        <button class="new" id="again">Nächstes Rätsel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tools">
+    <button class="tool" id="undo" title="Rückgängig (Strg+Z)">
+      <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Zurück
+    </button>
+    <button class="tool" id="erase" title="Löschen (Entf)">
+      <svg viewBox="0 0 24 24"><path d="m7 21-4-4L14 6l7 7-8 8Z"/><path d="M7 21h14"/><path d="m10 10 7 7"/></svg>Löschen
+    </button>
+    <button class="tool" id="notes" aria-pressed="false" title="Notizen (N)">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Notizen <span class="badge" id="notes-state">AUS</span></span>
+    </button>
+    <button class="tool" id="hint" title="Tipp (H)">
+      <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg>Tipp
+    </button>
+  </div>
+
+  <div class="pad" id="pad"></div>
+  <p class="hint-line">Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen. Rot heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.</p>
+</div>
+
+<div class="record" id="record" hidden role="dialog" aria-live="assertive" aria-label="New best time">
+  <div class="record-inner">
+    <div class="record-word" aria-hidden="true">
+      <div class="line l1"><span style="--i:0; rotate:-4deg">N</span><span style="--i:1; translate:0 6px">E</span><span style="--i:2">W</span></div>
+      <div class="line l2"><span style="--i:3">B</span><span style="--i:4; translate:0 -6px">E</span><span style="--i:5">S</span><span style="--i:6; translate:0 6px">T</span></div>
+      <div class="line l3"><span style="--i:7; translate:0 -4px">T</span><span style="--i:8">I</span><span style="--i:9; translate:0 6px">M</span><span style="--i:10">E</span><span style="--i:11; rotate:6deg">!</span></div>
+    </div>
+    <p class="sr-only">New best time!</p>
+    <div class="record-time"><b id="record-time">00:00</b><span id="record-prev"></span></div>
+    <p class="record-close">Tippen zum Schließen</p>
+  </div>
+</div>
+
+<div class="record" id="daily" hidden role="dialog" aria-live="polite" aria-label="Bis morgen">
+  <div class="record-inner">
+    <div class="record-word" aria-hidden="true">
+      <div class="line l1 lb"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">I</span><span style="--i:2">S</span></div>
+      <div class="line lm"><span style="--i:3; translate:0 -4px">M</span><span style="--i:4">O</span><span style="--i:5; translate:0 6px">R</span><span style="--i:6">G</span><span style="--i:7; translate:0 -6px">E</span><span style="--i:8">N</span><span style="--i:9; rotate:6deg">!</span></div>
+    </div>
+    <p class="sr-only">Bis morgen! Du hast heute alle drei Rätsel gespielt.</p>
+    <div class="record-time"><b id="daily-count">3 / 3</b><span id="daily-next"></span></div>
+    <p class="record-close">Tippen zum Schließen</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Generator ----------
+  const LEVELS = { leicht: 40, mittel: 32, schwer: 27, experte: 23 };
+  const ROW = i => (i / 9) | 0, COL = i => i % 9, BOX = i => ((ROW(i) / 3) | 0) * 3 + ((COL(i) / 3) | 0);
+  const PEERS = Array.from({ length: 81 }, (_, i) => {
+    const s = new Set();
+    for (let j = 0; j < 81; j++) if (j !== i && (ROW(j) === ROW(i) || COL(j) === COL(i) || BOX(j) === BOX(i))) s.add(j);
+    return [...s];
+  });
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  // Bitmask solver: counts solutions up to `limit`; fills grid with the first one if `fill`.
+  function solve(grid, limit, fill) {
+    const g = grid.slice(), rows = new Array(9).fill(0), cols = new Array(9).fill(0), boxes = new Array(9).fill(0);
+    for (let i = 0; i < 81; i++) if (g[i]) { const b = 1 << g[i]; rows[ROW(i)] |= b; cols[COL(i)] |= b; boxes[BOX(i)] |= b; }
+    let count = 0, first = null;
+    const rec = () => {
+      let best = -1, bestMask = 0, bestN = 10;
+      for (let i = 0; i < 81; i++) if (!g[i]) {
+        const m = ~(rows[ROW(i)] | cols[COL(i)] | boxes[BOX(i)]) & 0x3fe;
+        let n = 0, x = m; while (x) { x &= x - 1; n++; }
+        if (n < bestN) { best = i; bestMask = m; bestN = n; if (n <= 1) break; }
+      }
+      if (best === -1) { count++; if (!first) first = g.slice(); return count >= limit; }
+      if (bestN === 0) return false;
+      const digits = [];
+      for (let d = 1; d <= 9; d++) if (bestMask & (1 << d)) digits.push(d);
+      if (fill) shuffle(digits);
+      const r = ROW(best), c = COL(best), bx = BOX(best);
+      for (const d of digits) {
+        const b = 1 << d;
+        g[best] = d; rows[r] |= b; cols[c] |= b; boxes[bx] |= b;
+        if (rec()) return true;
+        g[best] = 0; rows[r] &= ~b; cols[c] &= ~b; boxes[bx] &= ~b;
+      }
+      return false;
+    };
+    rec();
+    return { count, solution: first };
+  }
+
+  function generate(level) {
+    const solution = solve(new Array(81).fill(0), 1, true).solution;
+    const puzzle = solution.slice();
+    const target = LEVELS[level];
+    let clues = 81;
+    for (const i of shuffle([...Array(81).keys()])) {
+      if (clues <= target) break;
+      const keep = puzzle[i];
+      puzzle[i] = 0;
+      if (solve(puzzle, 2, false).count !== 1) puzzle[i] = keep; else clues--;
+    }
+    return { puzzle, solution };
+  }
+
+  // ---------- State ----------
+  const $ = id => document.getElementById(id);
+  const board = $('board'), pad = $('pad');
+  let S; // game state
+  let timerId = null;
+  let pendingDaily = false; // „Bis morgen!“ nach der Rekord-Feier zeigen
+
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem('sudoku-state') || 'null'); } catch { return null; } },
+    set(v) { try { localStorage.setItem('sudoku-state', JSON.stringify(v)); } catch {} },
+  };
+
+  // ---------- Tageslimit ----------
+  const LIMIT = 3;
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  function daily() {
+    try { const v = JSON.parse(localStorage.getItem('sudoku-daily') || 'null'); if (v && v.date === today()) return v; } catch {}
+    return { date: today(), count: 0 };
+  }
+  function setDaily(v) { try { localStorage.setItem('sudoku-daily', JSON.stringify(v)); } catch {} }
+  const limitReached = () => daily().count >= LIMIT;
+
+  // Startet ein neues Rätsel, solange das Tageskontingent reicht; sonst kommt „Bis morgen!“
+  function requestNewGame(level) {
+    const d = daily();
+    if (d.count >= LIMIT) { showDaily(); return; }
+    d.count++; setDaily(d);
+    newGame(level);
+  }
+
+  function untilTomorrow() {
+    const now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const mins = Math.max(1, Math.ceil((next - now) / 60000));
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return h ? `Neue Rätsel in ${h} Std ${m} Min` : `Neue Rätsel in ${m} Min`;
+  }
+
+  function newGame(level) {
+    pendingDaily = false;
+    const { puzzle, solution } = generate(level);
+    S = { level, puzzle, solution, values: puzzle.slice(), notes: new Array(81).fill(0),
+          selected: puzzle.indexOf(0), notesMode: false, hints: 0, seconds: 0, history: [], solved: false };
+    closeRecord(); closeDaily(); render(); save(); startTimer();
+  }
+
+  function save() { store.set(S); }
+
+  // ---------- Board DOM ----------
+  const cells = [];
+  for (let i = 0; i < 81; i++) {
+    const b = document.createElement('button');
+    b.className = 'cell'; b.type = 'button'; b.setAttribute('role', 'gridcell'); b.dataset.i = i;
+    b.addEventListener('click', () => { S.selected = i; render(); });
+    board.appendChild(b); cells.push(b);
+  }
+  const padBtns = [];
+  for (let d = 1; d <= 9; d++) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.innerHTML = `${d}<small></small>`; b.setAttribute('aria-label', `Ziffer ${d}`);
+    b.addEventListener('click', () => input(d));
+    pad.appendChild(b); padBtns.push(b);
+  }
+
+  function render() {
+    const sel = S.selected, selVal = sel >= 0 ? S.values[sel] : 0;
+    const peerSet = new Set(sel >= 0 ? PEERS[sel] : []);
+    const counts = new Array(10).fill(0);
+    for (let i = 0; i < 81; i++) if (S.values[i]) counts[S.values[i]]++;
+    for (let i = 0; i < 81; i++) {
+      const c = cells[i], v = S.values[i];
+      c.className = 'cell';
+      if (S.puzzle[i]) c.classList.add('given');
+      if (peerSet.has(i)) c.classList.add('peer');
+      if (selVal && v === selVal) c.classList.add('same');
+      if (i === sel) c.classList.add('selected');
+      if (v && PEERS[i].some(p => S.values[p] === v)) c.classList.add(S.puzzle[i] ? 'conflict' : 'wrong');
+      if (v) { c.textContent = v; }
+      else if (S.notes[i]) {
+        let h = '<span class="notes">';
+        for (let d = 1; d <= 9; d++) h += `<i class="${selVal === d ? 'hl' : ''}">${S.notes[i] & (1 << d) ? d : ''}</i>`;
+        c.innerHTML = h + '</span>';
+      } else c.textContent = '';
+      c.setAttribute('aria-label', `Zeile ${ROW(i) + 1}, Spalte ${COL(i) + 1}: ${v || 'leer'}`);
+      c.tabIndex = i === sel ? 0 : -1;
+    }
+    padBtns.forEach((b, k) => { const left = 9 - counts[k + 1]; b.disabled = left <= 0 || S.solved; b.querySelector('small').textContent = left > 0 ? left : '✓'; });
+    const best = bests()[S.level];
+    document.querySelectorAll('.levels [data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === S.level));
+    $('notes').setAttribute('aria-pressed', S.notesMode);
+    $('notes-state').textContent = S.notesMode ? 'AN' : 'AUS';
+    $('best').textContent = best ? fmt(best) : '–';
+    $('today').textContent = `${Math.min(Math.max(daily().count, 1), LIMIT)} / ${LIMIT}`;
+    $('again').textContent = limitReached() ? 'Für heute fertig' : 'Nächstes Rätsel';
+    $('timer').textContent = fmt(S.seconds);
+    $('win').hidden = !S.solved;
+    if (S.solved) $('win-text').textContent = `${label(S.level)} in ${fmt(S.seconds)}` +
+      (best ? ` · Bestzeit ${fmt(best)}` : '');
+  }
+
+  // ---------- Bestzeiten ----------
+  function bests() { try { return JSON.parse(localStorage.getItem('sudoku-best') || '{}') || {}; } catch { return {}; } }
+  function saveBest(level, seconds) {
+    const b = bests(); b[level] = seconds;
+    try { localStorage.setItem('sudoku-best', JSON.stringify(b)); } catch {}
+  }
+
+  // ---------- Rekord-Feier ----------
+  const rec = $('record');
+  let recTimer = null;
+  function celebrate(seconds, previous) {
+    $('record-time').textContent = fmt(seconds);
+    $('record-prev').textContent = previous ? `vorher ${fmt(previous)}` : `erste Bestzeit · ${label(S.level)}`;
+    rec.hidden = false;
+    rec.classList.remove('play'); void rec.offsetWidth; rec.classList.add('play');
+    clearTimeout(recTimer);
+    recTimer = setTimeout(closeRecord, 5200);
+  }
+  function closeRecord() {
+    clearTimeout(recTimer);
+    const wasOpen = !rec.hidden;
+    rec.hidden = true; rec.classList.remove('play');
+    if (wasOpen && pendingDaily) { pendingDaily = false; showDaily(); }
+  }
+  rec.addEventListener('click', closeRecord);
+
+  // ---------- „Bis morgen!“ ----------
+  const dailyEl = $('daily');
+  function showDaily() {
+    $('daily-count').textContent = `${LIMIT} / ${LIMIT}`;
+    $('daily-next').textContent = untilTomorrow();
+    dailyEl.hidden = false;
+    dailyEl.classList.remove('play'); void dailyEl.offsetWidth; dailyEl.classList.add('play');
+  }
+  function closeDaily() { dailyEl.hidden = true; dailyEl.classList.remove('play'); }
+  dailyEl.addEventListener('click', closeDaily);
+
+  const label = l => ({ leicht: 'Leicht', mittel: 'Mittel', schwer: 'Schwer', experte: 'Experte' })[l];
+  const fmt = s => `${String((s / 60) | 0).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  // ---------- Actions ----------
+  function pushHistory(i) { S.history.push({ i, v: S.values[i], n: S.notes.slice() }); if (S.history.length > 300) S.history.shift(); }
+
+  function input(d) {
+    const i = S.selected;
+    if (i < 0 || S.puzzle[i] || S.solved) return;
+    if (S.notesMode) {
+      if (S.values[i]) return;
+      pushHistory(i);
+      S.notes[i] ^= 1 << d;
+    } else {
+      if (S.values[i] === d) return;
+      pushHistory(i);
+      S.values[i] = d; S.notes[i] = 0;
+      for (const p of PEERS[i]) S.notes[p] &= ~(1 << d);
+      checkWin();
+    }
+    render(); save();
+  }
+
+  function erase() {
+    const i = S.selected;
+    if (i < 0 || S.puzzle[i] || S.solved) return;
+    if (!S.values[i] && !S.notes[i]) return;
+    pushHistory(i); S.values[i] = 0; S.notes[i] = 0; render(); save();
+  }
+
+  function undo() {
+    if (S.solved) return;
+    const h = S.history.pop(); if (!h) return;
+    S.values[h.i] = h.v; S.notes = h.n; S.selected = h.i; render(); save();
+  }
+
+  function hint() {
+    if (S.solved) return;
+    let i = S.selected;
+    if (i < 0 || S.values[i] === S.solution[i]) {
+      const empty = []; for (let k = 0; k < 81; k++) if (S.values[k] !== S.solution[k]) empty.push(k);
+      if (!empty.length) return; i = empty[(Math.random() * empty.length) | 0];
+    }
+    pushHistory(i);
+    S.hints = (S.hints || 0) + 1;
+    const d = S.solution[i]; S.values[i] = d; S.notes[i] = 0; S.selected = i;
+    for (const p of PEERS[i]) S.notes[p] &= ~(1 << d);
+    checkWin(); render(); save();
+  }
+
+  function checkWin() {
+    if (!S.values.every((v, k) => v === S.solution[k])) return;
+    S.solved = true; stopTimer();
+    pendingDaily = limitReached();
+    const prev = bests()[S.level];
+    if (!prev || S.seconds < prev) { saveBest(S.level, S.seconds); celebrate(S.seconds, prev); }
+    else if (pendingDaily) setTimeout(() => { if (pendingDaily) { pendingDaily = false; showDaily(); } }, 1400);
+  }
+
+  function startTimer() {
+    stopTimer();
+    if (S.solved) return;
+    timerId = setInterval(() => { if (document.hidden) return; S.seconds++; $('timer').textContent = fmt(S.seconds); if (S.seconds % 5 === 0) save(); }, 1000);
+  }
+  function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; }
+
+  // ---------- Wiring ----------
+  document.querySelectorAll('.levels [data-level]').forEach(b => b.addEventListener('click', () => requestNewGame(b.dataset.level)));
+  $('new').addEventListener('click', () => requestNewGame(S.level));
+  $('again').addEventListener('click', () => requestNewGame(S.level));
+  $('undo').addEventListener('click', undo);
+  $('erase').addEventListener('click', erase);
+  $('hint').addEventListener('click', hint);
+  $('notes').addEventListener('click', () => { S.notesMode = !S.notesMode; render(); save(); });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('.levels')) return;
+    const k = e.key;
+    if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[1-9]$/.test(k)) { input(+k); e.preventDefault(); return; }
+    if (k === 'Backspace' || k === 'Delete' || k === '0') { erase(); e.preventDefault(); return; }
+    if (k === 'n' || k === 'N') { S.notesMode = !S.notesMode; render(); save(); return; }
+    if (k === 'h' || k === 'H') { hint(); return; }
+    const mv = { ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1 }[k];
+    if (mv) {
+      e.preventDefault();
+      let i = S.selected < 0 ? 40 : S.selected;
+      if (mv === -1 && COL(i) === 0) i += 8; else if (mv === 1 && COL(i) === 8) i -= 8; else i = (i + mv + 81) % 81;
+      S.selected = i; render(); cells[i].focus();
+    }
+  });
+
+  function start(data) {
+    const saved = (data && data.S) || store.get();
+    if (saved && saved.solution && saved.values) {
+      S = saved; render(); startTimer();
+      if (S.solved && limitReached()) showDaily();
+    } else if (limitReached()) {
+      newGame('mittel'); showDaily(); // Spielstand fehlt, Kontingent aber verbraucht
+    } else requestNewGame('mittel');
+    // Vorschau ohne echtes Ereignis: Link mit #rekord oder #morgen öffnen
+    const demo = () => {
+      if (location.hash === '#rekord') celebrate(312, 405);
+      if (location.hash === '#morgen') showDaily();
+    };
+    demo(); window.addEventListener('hashchange', demo);
+  }
+  window.claude?.hot?.snapshot?.(() => ({ S }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
