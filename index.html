@@ -574,22 +574,46 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
   }
 
+  // Hinweis für ein bestimmtes leeres Feld, ohne eine Zahl zu nennen
+  function cellHint(i) {
+    const n = bits(candidates(i));
+    if (n === 1) return 'Hier passt nur noch eine Zahl. Prüf Zeile, Spalte und Block.';
+    for (const u of UNITS) {
+      if (!u.cells.includes(i)) continue;
+      for (let d = 1; d <= 9; d++) {
+        if (!(candidates(i) & (1 << d)) || u.cells.some(k => S.values[k] === d)) continue;
+        const spots = u.cells.filter(k => !S.values[k] && candidates(k) & (1 << d));
+        if (spots.length === 1) {
+          const where = { Zeile: 'in dieser Zeile', Spalte: 'in dieser Spalte', Block: 'in diesem Block' }[u.name];
+          return `Eine der fehlenden Zahlen passt ${where} nur in dieses Feld.`;
+        }
+      }
+    }
+    return null; // schwieriges Feld
+  }
+  let hardHintCell = -1; // zuletzt als schwierig gemeldetes Feld
+
+  // Der Tipp setzt nie eine Zahl ein: er gibt einen Hinweis zum ausgewählten leeren Feld
+  // oder zeigt, wo es am leichtesten weitergeht.
   function hint() {
     if (S.solved) return;
-    let i = S.selected;
-    const fillable = i >= 0 && !S.puzzle[i] && S.values[i] !== S.solution[i];
-    if (!fillable) {
-      const e = easiestCell(); if (!e) return;
-      S.selected = e.i; pulseCell = e.i;
-      clearTimeout(pulseTimer); pulseTimer = setTimeout(() => { pulseCell = -1; render(); }, 1800);
-      render(); toast(e.msg + ' Nochmal „Tipp“ zeigt die Lösung.');
-      return;
+    const conflict = easiestCell();
+    let target, msg;
+    const sel = S.selected;
+    const selEmpty = sel >= 0 && !S.values[sel];
+    if (conflict && conflict.msg.startsWith('Erst')) { target = conflict.i; msg = conflict.msg; }
+    else if (selEmpty && (msg = cellHint(sel))) { target = sel; }
+    else if (selEmpty && hardHintCell !== sel) {
+      // erst sagen, dass das Feld schwierig ist; ein zweiter Tipp springt zu einem leichteren
+      target = sel; hardHintCell = sel;
+      msg = `Hier passen noch ${bits(candidates(sel))} Zahlen. Nochmal „Tipp“ zeigt ein leichteres Feld.`;
     }
-    pushHistory(i);
-    S.hints = (S.hints || 0) + 1;
-    const d = S.solution[i]; S.values[i] = d; S.notes[i] = 0; S.selected = i;
-    for (const p of PEERS[i]) S.notes[p] &= ~(1 << d);
-    checkWin(); render(); save();
+    else if (conflict) { target = conflict.i; msg = conflict.msg; }
+    else return;
+    if (!msg.startsWith('Hier passen noch')) hardHintCell = -1;
+    S.selected = target; pulseCell = target;
+    clearTimeout(pulseTimer); pulseTimer = setTimeout(() => { pulseCell = -1; render(); }, 1800);
+    render(); save(); toast(msg);
   }
 
   function checkWin() {
