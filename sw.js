@@ -1,5 +1,5 @@
 // Offline-Unterstützung für Brain Gym. Bei jeder Änderung an der App VERSION erhöhen.
-const VERSION = 'v8';
+const VERSION = 'v9';
 const CACHE = `brain-gym-${VERSION}`;
 const FILES = [
   './',

@@ -152,9 +152,10 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 }
 .start-btn b { font-family: var(--r-block); font-weight: 400; font-size: 2.1rem; line-height: 1; letter-spacing: .03em; color: var(--r-face); text-transform: uppercase; }
 .start-btn span { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
-.start-btn:hover { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--r-side); }
+@media (hover: hover) { .start-btn:hover { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--r-side); } }
 .start-btn:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0 var(--r-side); }
-.start-btn:focus-visible { outline: 3px solid var(--r-side); outline-offset: 4px; }
+.start-btn:focus { outline: none; }
+.start-btn:focus-visible { outline: 3px solid var(--r-plum); outline-offset: 6px; } /* nur bei Tastaturbedienung */
 .start-info { margin: 0; color: var(--r-ink); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
 .record.play .start-btn { animation: rise .5s ease-out .45s both; }
 .record-word .lm { font-size: min(14vw, 12.5vh, 6.25rem); margin-left: 0.5em; }
@@ -602,7 +603,6 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
       const el = $('start'); el.hidden = true; el.classList.remove('play');
       if (S.solved && limitReached()) showDaily();
     });
-    $('start-btn').focus({ preventScroll: true });
 
     // Vorschau ohne echtes Ereignis: Link mit #rekord oder #morgen öffnen
     const demo = () => {
