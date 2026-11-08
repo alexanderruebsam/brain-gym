@@ -143,6 +143,8 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 .record-word .ls1 { font-size: min(18vw, 13vh, 6.5rem); margin-right: 0.5em; }
 .record-word .ls2 { font-size: min(25vw, 18vh, 9rem); margin-left: 1em; }
 #start { cursor: default; }
+/* Die 3D-Tiefe ragt nach rechts und GYM ist eingerückt: Schriftzug etwas nach links, damit er optisch mittig sitzt */
+#start .record-word { translate: -8% 0; }
 .start-tag { margin: 0; color: var(--r-ink); font-family: var(--body); font-size: 0.95rem; letter-spacing: 0.04em; }
 .start-btn {
   font-family: var(--r-block); font-size: 1.9rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase;
