@@ -107,6 +107,13 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 .cell.selected { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
 .cell.wrong { color: var(--error); background: var(--error-soft); }
 .cell.conflict { background: var(--error-soft); }
+.cell.pulse { animation: pulse .6s ease-in-out 3; z-index: 1; }
+@keyframes pulse { 50% { box-shadow: inset 0 0 0 4px var(--accent); background: var(--same); } }
+.toast {
+  position: absolute; left: 50%; bottom: 12px; translate: -50% 0; width: max-content; max-width: calc(100% - 24px);
+  background: var(--ink); color: var(--paper); font-size: 0.85rem; line-height: 1.35; text-align: center;
+  padding: 8px 14px; border-radius: 10px; box-shadow: 0 6px 20px -8px rgba(0,0,0,.5); pointer-events: none;
+}
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---- Rekord-Feier: verspielte 3D-Blockschrift, bewusst ein fester Look auf Weiß in beiden Themes ---- */
@@ -235,6 +242,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 
   <div class="board-wrap">
     <div class="board" id="board" role="grid" aria-label="Sudoku-Raster"></div>
+    <p class="toast" id="toast" role="status" hidden></p>
     <div class="overlay" id="win" hidden>
       <div>
         <h2>Gelöst!</h2>
@@ -432,6 +440,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
       if (peerSet.has(i)) c.classList.add('peer');
       if (selVal && v === selVal) c.classList.add('same');
       if (i === sel) c.classList.add('selected');
+      if (i === pulseCell) c.classList.add('pulse');
       if (v && PEERS[i].some(p => S.values[p] === v)) c.classList.add(S.puzzle[i] ? 'conflict' : 'wrong');
       if (v) { c.textContent = v; }
       else if (S.notes[i]) {
@@ -529,12 +538,52 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     S.values[h.i] = h.v; S.notes = h.n; S.selected = h.i; render(); save();
   }
 
+  // ---------- Tipp ----------
+  // Leeres (oder falsch gefülltes) Feld ausgewählt: Tipp setzt dort die richtige Zahl.
+  // Sonst: Tipp verrät keine Zahl, sondern springt zum leichtesten offenen Feld und sagt, warum.
+  const UNITS = [];
+  for (let r = 0; r < 9; r++) UNITS.push({ name: 'Zeile', cells: [...Array(9)].map((_, c) => r * 9 + c) });
+  for (let c = 0; c < 9; c++) UNITS.push({ name: 'Spalte', cells: [...Array(9)].map((_, r) => r * 9 + c) });
+  for (let b = 0; b < 9; b++) UNITS.push({ name: 'Block', cells: [...Array(9)].map((_, k) => (((b / 3) | 0) * 3 + ((k / 3) | 0)) * 9 + (b % 3) * 3 + (k % 3)) });
+  const candidates = i => { let m = 0x3fe; for (const p of PEERS[i]) if (S.values[p]) m &= ~(1 << S.values[p]); return m; };
+  const bits = m => { let n = 0; while (m) { m &= m - 1; n++; } return n; };
+  const hasConflict = i => S.values[i] && PEERS[i].some(p => S.values[p] === S.values[i]);
+
+  function easiestCell() {
+    // bei zwei eigenen Zahlen im Konflikt auf die falsche zeigen, sonst hängt der Tipp an der richtigen fest
+    const conflict = [...Array(81).keys()].find(i => !S.puzzle[i] && hasConflict(i) && S.values[i] !== S.solution[i]);
+    if (conflict !== undefined) return { i: conflict, msg: 'Erst diesen Konflikt lösen.' };
+    const empty = [...Array(81).keys()].filter(i => !S.values[i]);
+    if (!empty.length) return null;
+    const single = empty.find(i => bits(candidates(i)) === 1);
+    if (single !== undefined) return { i: single, msg: 'Hier passt nur noch eine Zahl.' };
+    for (const u of UNITS) for (let d = 1; d <= 9; d++) {
+      if (u.cells.some(k => S.values[k] === d)) continue;
+      const spots = u.cells.filter(k => !S.values[k] && candidates(k) & (1 << d));
+      const where = { Zeile: 'in dieser Zeile', Spalte: 'in dieser Spalte', Block: 'in diesem Block' }[u.name];
+      if (spots.length === 1) return { i: spots[0], msg: `Eine Zahl passt ${where} nur hier.` };
+    }
+    let best = empty[0];
+    for (const i of empty) if (bits(candidates(i)) < bits(candidates(best))) best = i;
+    return { i: best, msg: 'Hier gibt es die wenigsten Möglichkeiten.' };
+  }
+
+  let pulseCell = -1, pulseTimer = null, toastTimer = null;
+  function toast(text) {
+    const t = $('toast'); t.textContent = text; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+  }
+
   function hint() {
     if (S.solved) return;
     let i = S.selected;
-    if (i < 0 || S.values[i] === S.solution[i]) {
-      const empty = []; for (let k = 0; k < 81; k++) if (S.values[k] !== S.solution[k]) empty.push(k);
-      if (!empty.length) return; i = empty[(Math.random() * empty.length) | 0];
+    const fillable = i >= 0 && !S.puzzle[i] && S.values[i] !== S.solution[i];
+    if (!fillable) {
+      const e = easiestCell(); if (!e) return;
+      S.selected = e.i; pulseCell = e.i;
+      clearTimeout(pulseTimer); pulseTimer = setTimeout(() => { pulseCell = -1; render(); }, 1800);
+      render(); toast(e.msg + ' Nochmal „Tipp“ zeigt die Lösung.');
+      return;
     }
     pushHistory(i);
     S.hints = (S.hints || 0) + 1;
