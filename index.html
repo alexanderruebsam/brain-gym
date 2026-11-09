@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Brain Gym</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=Luckiest+Guy&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=Luckiest+Guy&family=Dela+Gothic+One&display=swap">
 <style>
 /* Basis, die vorher das Artifact-Gerüst lieferte */
 :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -119,7 +119,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 /* ---- Rekord-Feier: verspielte 3D-Blockschrift, bewusst ein fester Look auf Weiß in beiden Themes ---- */
 .record {
   --r-bg: #ffffff; --r-face: #f9d342; --r-side: #ec6a2a; --r-under: #b03cf0; --r-plum: #7b2cbf; --r-ink: #5b3a78;
-  --r-block: "Luckiest Guy", "Arial Black", Impact, sans-serif;
+  --r-block: "Luckiest Guy", "Dela Gothic One", "Arial Black", Impact, sans-serif;
   position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; overflow: hidden;
   background: var(--r-bg); cursor: pointer;
   padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
@@ -192,7 +192,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   background: color-mix(in srgb, var(--paper) 88%, transparent); border-radius: 6px; padding: 24px;
 }
 .overlay h2 {
-  font-family: "Luckiest Guy", "Arial Black", sans-serif; font-weight: 400; font-size: 3rem; line-height: 1;
+  font-family: "Luckiest Guy", "Dela Gothic One", "Arial Black", sans-serif; font-weight: 400; font-size: 3rem; line-height: 1;
   margin: 0 0 14px; color: var(--good); transform: rotate(-4deg);
   text-shadow: .02em .02em 0 var(--good-side), .04em .04em 0 var(--good-side), .06em .06em 0 var(--good-side), .08em .08em 0 var(--good-side),
     .02em .1em 0 var(--accent), .04em .12em 0 var(--accent), .06em .14em 0 var(--accent), .08em .16em 0 var(--accent);
@@ -219,6 +219,29 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 .hint-line { font-size: 0.8rem; color: var(--muted); text-align: center; margin: 0; }
 @media (max-width: 420px) { .pad { gap: 4px; } h1 { font-size: 1.6rem; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ---- Sprachen ---- */
+/* Japanisch: Luckiest Guy hat keine japanischen Zeichen, daher Dela Gothic One mit derselben 3D-Tiefe */
+.record-word.ja { line-height: 1.02; margin-bottom: 28px; translate: -9px 0; } /* nach Tinte zentriert: das Vollbreiten-！ hat rechts viel Leerraum */
+.record-word.ja .line span { font-family: "Dela Gothic One", sans-serif; -webkit-text-stroke: .012em var(--r-face); }
+.record-word .lj1 { font-size: min(19vw, 12.5vh, 6.5rem); margin-right: 1.1em; }
+.record-word .lj2 { font-size: min(23vw, 15.5vh, 8.25rem); margin-left: .35em; }
+.record-word.en { margin-bottom: 14px; translate: -14px 0; }
+.record-word .le1 { font-size: min(17vw, 12vh, 6rem); margin-right: 1.2em; }
+.record-word .le2 { font-size: min(14vw, 12.5vh, 6.25rem); margin-left: .3em; }
+html:lang(ja) .start-btn { padding: 13px 30px; }
+html:lang(ja) .start-btn b { font-family: "Dela Gothic One", sans-serif; font-size: 1.75rem; letter-spacing: .02em; }
+html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label { letter-spacing: .04em; }
+.lang {
+  position: absolute; left: 0; right: 0; bottom: max(28px, env(safe-area-inset-bottom, 0px));
+  display: flex; justify-content: center; gap: 6px;
+}
+.lang button {
+  font: 700 0.8rem/1 var(--body); letter-spacing: .08em; color: var(--r-ink);
+  background: none; border: 0; border-radius: 999px; padding: 8px 12px 7px; cursor: pointer;
+}
+.lang button[aria-pressed="true"] { background: var(--r-plum); color: var(--r-face); box-shadow: 3px 3px 0 var(--r-side); }
+.lang button:focus { outline: none; }
+.lang button:focus-visible { outline: 3px solid var(--r-plum); outline-offset: 3px; }
 </style>
 </head>
 <body>
@@ -226,26 +249,26 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   <header>
     <h1>Brain <span>Gym</span></h1>
     <div class="stats">
-      <div class="stat"><span class="label">Heute</span><b id="today">1 / 3</b></div>
-      <div class="stat"><span class="label">Bestzeit</span><b id="best">–</b></div>
-      <div class="stat"><span class="label">Zeit</span><b id="timer">00:00</b></div>
+      <div class="stat"><span class="label" data-t="today">Heute</span><b id="today">1 / 3</b></div>
+      <div class="stat"><span class="label" data-t="best">Bestzeit</span><b id="best">–</b></div>
+      <div class="stat"><span class="label" data-t="time">Zeit</span><b id="timer">00:00</b></div>
     </div>
   </header>
 
-  <div class="levels" role="group" aria-label="Schwierigkeit">
-    <button data-level="leicht" id="lv-leicht">Leicht</button>
-    <button data-level="mittel" id="lv-mittel">Mittel</button>
-    <button data-level="schwer" id="lv-schwer">Schwer</button>
-    <button data-level="experte" id="lv-experte">Experte</button>
-    <button class="new" id="new">Neues Spiel</button>
+  <div class="levels" role="group" aria-label="Schwierigkeit" data-t-aria="levels">
+    <button data-level="leicht" id="lv-leicht" data-t="lv_leicht">Leicht</button>
+    <button data-level="mittel" id="lv-mittel" data-t="lv_mittel">Mittel</button>
+    <button data-level="schwer" id="lv-schwer" data-t="lv_schwer">Schwer</button>
+    <button data-level="experte" id="lv-experte" data-t="lv_experte">Experte</button>
+    <button class="new" id="new" data-t="newGame">Neues Spiel</button>
   </div>
 
   <div class="board-wrap">
-    <div class="board" id="board" role="grid" aria-label="Sudoku-Raster"></div>
+    <div class="board" id="board" role="grid" aria-label="Sudoku-Raster" data-t-aria="grid"></div>
     <p class="toast" id="toast" role="status" hidden></p>
     <div class="overlay" id="win" hidden>
       <div>
-        <h2>Gelöst!</h2>
+        <h2 data-t="solved">Gelöst!</h2>
         <p id="win-text"></p>
         <button class="new" id="again">Nächstes Rätsel</button>
       </div>
@@ -253,22 +276,22 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   </div>
 
   <div class="tools">
-    <button class="tool" id="undo" title="Rückgängig (Strg+Z)">
-      <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Zurück
+    <button class="tool" id="undo" title="Rückgängig (Strg+Z)" data-t-title="undoTitle">
+      <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-t="undo">Zurück</span>
     </button>
-    <button class="tool" id="erase" title="Löschen (Entf)">
-      <svg viewBox="0 0 24 24"><path d="m7 21-4-4L14 6l7 7-8 8Z"/><path d="M7 21h14"/><path d="m10 10 7 7"/></svg>Löschen
+    <button class="tool" id="erase" title="Löschen (Entf)" data-t-title="eraseTitle">
+      <svg viewBox="0 0 24 24"><path d="m7 21-4-4L14 6l7 7-8 8Z"/><path d="M7 21h14"/><path d="m10 10 7 7"/></svg><span data-t="erase">Löschen</span>
     </button>
-    <button class="tool" id="notes" aria-pressed="false" title="Notizen (N)">
-      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Notizen <span class="badge" id="notes-state">AUS</span></span>
+    <button class="tool" id="notes" aria-pressed="false" title="Notizen (N)" data-t-title="notesTitle">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span><span data-t="notes">Notizen</span> <span class="badge" id="notes-state">AUS</span></span>
     </button>
-    <button class="tool" id="hint" title="Tipp (H)">
-      <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg>Tipp
+    <button class="tool" id="hint" title="Tipp (H)" data-t-title="hintTitle">
+      <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg><span data-t="hint">Tipp</span>
     </button>
   </div>
 
   <div class="pad" id="pad"></div>
-  <p class="hint-line">Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen. Rot heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.</p>
+  <p class="hint-line" data-t="keys">Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen. Orange heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.</p>
 </div>
 
 <div class="record" id="record" hidden role="dialog" aria-live="assertive" aria-label="New best time">
@@ -280,7 +303,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     </div>
     <p class="sr-only">New best time!</p>
     <div class="record-time"><b id="record-time">00:00</b><span id="record-prev"></span></div>
-    <p class="record-close">Tippen zum Schließen</p>
+    <p class="record-close" data-t="tapClose">Tippen zum Schließen</p>
   </div>
 </div>
 
@@ -291,21 +314,26 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
       <div class="line ls2"><span style="--i:5; translate:0 -4px">G</span><span style="--i:6">Y</span><span style="--i:7; translate:0 6px">M</span></div>
     </div>
     <p class="sr-only">Brain Gym</p>
-    <p class="start-tag">Sudoku · drei Rätsel am Tag</p>
+    <p class="start-tag" data-t="tag">Sudoku · drei Rätsel am Tag</p>
     <button class="start-btn" id="start-btn" type="button"><b id="start-label">Los geht’s!</b></button>
     <p class="start-info" id="start-info"></p>
   </div>
+  <div class="lang" id="lang" role="group" aria-label="Sprache" data-t-aria="language">
+    <button type="button" data-lang="de" lang="de">DE</button>
+    <button type="button" data-lang="en" lang="en">EN</button>
+    <button type="button" data-lang="ja" lang="ja">日本語</button>
+  </div>
 </div>
 
-<div class="record" id="daily" hidden role="dialog" aria-live="polite" aria-label="Bis morgen">
+<div class="record" id="daily" hidden role="dialog" aria-live="polite" aria-label="Bis morgen" data-t-aria="dailyAria">
   <div class="record-inner">
-    <div class="record-word" aria-hidden="true">
+    <div class="record-word" id="daily-word" aria-hidden="true">
       <div class="line l1 lb"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">I</span><span style="--i:2">S</span></div>
       <div class="line lm"><span style="--i:3; translate:0 -4px">M</span><span style="--i:4">O</span><span style="--i:5; translate:0 6px">R</span><span style="--i:6">G</span><span style="--i:7; translate:0 -6px">E</span><span style="--i:8">N</span><span style="--i:9; rotate:6deg">!</span></div>
     </div>
-    <p class="sr-only">Bis morgen! Du hast heute alle drei Rätsel gespielt.</p>
+    <p class="sr-only" data-t="dailySr">Bis morgen! Du hast heute alle drei Rätsel gespielt.</p>
     <div class="record-time"><b id="daily-count">3 / 3</b><span id="daily-next"></span></div>
-    <p class="record-close">Tippen zum Schließen</p>
+    <p class="record-close" data-t="tapClose">Tippen zum Schließen</p>
   </div>
 </div>
 
@@ -399,7 +427,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     const now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const mins = Math.max(1, Math.ceil((next - now) / 60000));
     const h = Math.floor(mins / 60), m = mins % 60;
-    return h ? `Neue Rätsel in ${h} Std ${m} Min` : `Neue Rätsel in ${m} Min`;
+    return tr().until(h, m);
   }
 
   function newGame(level) {
@@ -412,6 +440,123 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 
   function save() { store.set(S); }
 
+
+  // ---------- Sprachen ----------
+  const TEXT = {
+    de: {
+      today: 'Heute', best: 'Bestzeit', time: 'Zeit', levels: 'Schwierigkeit', grid: 'Sudoku-Raster', language: 'Sprache',
+      lv_leicht: 'Leicht', lv_mittel: 'Mittel', lv_schwer: 'Schwer', lv_experte: 'Experte',
+      newGame: 'Neues Spiel', solved: 'Gelöst!', next: 'Nächstes Rätsel', doneToday: 'Für heute fertig',
+      undo: 'Zurück', erase: 'Löschen', notes: 'Notizen', hint: 'Tipp', on: 'AN', off: 'AUS',
+      undoTitle: 'Rückgängig (Strg+Z)', eraseTitle: 'Löschen (Entf)', notesTitle: 'Notizen (N)', hintTitle: 'Tipp (H)',
+      keys: 'Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen. Orange heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.',
+      tapClose: 'Tippen zum Schließen', tag: 'Sudoku · drei Rätsel am Tag',
+      go: 'Los geht’s!', resume: 'Weiterspielen',
+      startInfo: (n, l) => `Heute: Rätsel ${n} von ${l}`, allDone: l => `Heute alle ${l} Rätsel geschafft`,
+      dailyAria: 'Bis morgen', dailySr: 'Bis morgen! Du hast heute alle drei Rätsel gespielt.',
+      until: (h, m) => h ? `Neue Rätsel in ${h} Std ${m} Min` : `Neue Rätsel in ${m} Min`,
+      winText: (lv, t, b) => `${lv} in ${t}` + (b ? ` · Bestzeit ${b}` : ''),
+      prev: t => `vorher ${t}`, firstBest: lv => `erste Bestzeit · ${lv}`,
+      digit: d => `Ziffer ${d}`, cell: (r, c, v) => `Zeile ${r}, Spalte ${c}: ${v || 'leer'}`,
+      where: { row: 'in dieser Zeile', col: 'in dieser Spalte', box: 'in diesem Block' },
+      hConflict: 'Erst diesen Konflikt lösen.',
+      hSingle: 'Hier passt nur noch eine Zahl.',
+      hHidden: w => `Eine Zahl passt ${w} nur hier.`,
+      hFewest: 'Hier gibt es die wenigsten Möglichkeiten.',
+      cSingle: 'Hier passt nur noch eine Zahl. Prüf Zeile, Spalte und Block.',
+      cHidden: w => `Eine der fehlenden Zahlen passt ${w} nur in dieses Feld.`,
+      cHard: n => `Hier passen noch ${n} Zahlen. Nochmal „Tipp“ zeigt ein leichteres Feld.`,
+    },
+    en: {
+      today: 'Today', best: 'Best', time: 'Time', levels: 'Difficulty', grid: 'Sudoku grid', language: 'Language',
+      lv_leicht: 'Easy', lv_mittel: 'Medium', lv_schwer: 'Hard', lv_experte: 'Expert',
+      newGame: 'New game', solved: 'Solved!', next: 'Next puzzle', doneToday: 'Done for today',
+      undo: 'Undo', erase: 'Erase', notes: 'Notes', hint: 'Hint', on: 'ON', off: 'OFF',
+      undoTitle: 'Undo (Ctrl+Z)', eraseTitle: 'Erase (Del)', notesTitle: 'Notes (N)', hintTitle: 'Hint (H)',
+      keys: 'Keyboard: digits 1–9, arrow keys, N for notes, Del to erase. Orange means the number appears twice in a row, column or box.',
+      tapClose: 'Tap to close', tag: 'Sudoku · three puzzles a day',
+      go: 'Let’s go!', resume: 'Continue',
+      startInfo: (n, l) => `Today: puzzle ${n} of ${l}`, allDone: l => `All ${l} puzzles done today`,
+      dailyAria: 'See you tomorrow', dailySr: 'See you tomorrow! You have played all three puzzles today.',
+      until: (h, m) => h ? `New puzzles in ${h} h ${m} min` : `New puzzles in ${m} min`,
+      winText: (lv, t, b) => `${lv} in ${t}` + (b ? ` · Best ${b}` : ''),
+      prev: t => `previous ${t}`, firstBest: lv => `first best time · ${lv}`,
+      digit: d => `Digit ${d}`, cell: (r, c, v) => `Row ${r}, column ${c}: ${v || 'empty'}`,
+      where: { row: 'in this row', col: 'in this column', box: 'in this box' },
+      hConflict: 'Fix this conflict first.',
+      hSingle: 'Only one number fits here.',
+      hHidden: w => `A number fits only here ${w}.`,
+      hFewest: 'This cell has the fewest options.',
+      cSingle: 'Only one number fits here. Check the row, column and box.',
+      cHidden: w => `One of the missing numbers fits only in this cell ${w}.`,
+      cHard: n => `${n} numbers still fit here. Tap “Hint” again for an easier cell.`,
+    },
+    ja: {
+      today: '今日', best: 'ベスト', time: 'タイム', levels: '難易度', grid: '数独の盤面', language: '言語',
+      lv_leicht: '初級', lv_mittel: '中級', lv_schwer: '上級', lv_experte: '達人',
+      newGame: '新しい問題', solved: 'クリア！', next: '次の問題', doneToday: '今日はここまで',
+      undo: '戻す', erase: '消す', notes: 'メモ', hint: 'ヒント', on: 'オン', off: 'オフ',
+      undoTitle: '元に戻す (Ctrl+Z)', eraseTitle: '消す (Del)', notesTitle: 'メモ (N)', hintTitle: 'ヒント (H)',
+      keys: 'キーボード：数字 1–9、矢印キー、N でメモ、Del で消去。オレンジは、行・列・ブロックに同じ数字が重なっている印です。',
+      tapClose: 'タップして閉じる', tag: '数独・1日3問',
+      go: 'スタート！', resume: 'つづける',
+      startInfo: (n, l) => `今日：${l}問中${n}問目`, allDone: l => `今日の${l}問はすべてクリア`,
+      dailyAria: 'また明日', dailySr: 'また明日！今日の3問はすべて遊びました。',
+      until: (h, m) => h ? `次の問題まで ${h}時間${m}分` : `次の問題まで ${m}分`,
+      winText: (lv, t, b) => `${lv} ${t}` + (b ? ` · ベスト ${b}` : ''),
+      prev: t => `前回 ${t}`, firstBest: lv => `初めてのベスト · ${lv}`,
+      digit: d => `数字 ${d}`, cell: (r, c, v) => `${r}行${c}列：${v || '空き'}`,
+      where: { row: 'この行', col: 'この列', box: 'このブロック' },
+      hConflict: 'まずこの重なりを直そう。',
+      hSingle: 'ここに入る数字はひとつだけ。',
+      hHidden: w => `${w}で、ある数字はここにしか入らない。`,
+      hFewest: 'ここがいちばん候補の少ないマス。',
+      cSingle: 'ここに入る数字はひとつだけ。行・列・ブロックを確認しよう。',
+      cHidden: w => `${w}で、足りない数字のひとつはこのマスにしか入らない。`,
+      cHard: n => `ここにはまだ${n}個の数字が入る。もう一度「ヒント」で簡単なマスへ。`,
+    },
+  };
+  // „Bis morgen!“-Schriftzug je Sprache (Logo und „NEW BEST TIME!“ bleiben überall englisch)
+  const DAILY_WORD = {
+    de: ['', `<div class="line l1 lb"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">I</span><span style="--i:2">S</span></div>
+      <div class="line lm"><span style="--i:3; translate:0 -4px">M</span><span style="--i:4">O</span><span style="--i:5; translate:0 6px">R</span><span style="--i:6">G</span><span style="--i:7; translate:0 -6px">E</span><span style="--i:8">N</span><span style="--i:9; rotate:6deg">!</span></div>`],
+    en: ['en', `<div class="line le1"><span style="--i:0; rotate:-4deg">S</span><span style="--i:1; translate:0 6px">E</span><span style="--i:2">E</span>&nbsp;<span style="--i:3">Y</span><span style="--i:4; translate:0 -4px">A</span></div>
+      <div class="line le2"><span style="--i:5; translate:0 -4px">T</span><span style="--i:6">O</span><span style="--i:7; translate:0 6px">M</span><span style="--i:8">O</span><span style="--i:9; translate:0 -6px">R</span><span style="--i:10">R</span><span style="--i:11">O</span><span style="--i:12; translate:0 6px">W</span><span style="--i:13; rotate:6deg">!</span></div>`],
+    ja: ['ja', `<div class="line lj1"><span style="--i:0; rotate:-4deg">ま</span><span style="--i:1; translate:0 6px">た</span></div>
+      <div class="line lj2"><span style="--i:2; translate:0 -4px">明</span><span style="--i:3">日</span><span style="--i:4; rotate:6deg">！</span></div>`],
+  };
+  const LANGS = ['de', 'en', 'ja'];
+  function initialLang() {
+    try { const v = localStorage.getItem('brain-gym-lang'); if (LANGS.includes(v)) return v; } catch {}
+    // erster Start: Gerätesprache übernehmen, sonst Englisch
+    for (const l of navigator.languages || [navigator.language || '']) {
+      const code = String(l).slice(0, 2).toLowerCase();
+      if (LANGS.includes(code)) return code;
+    }
+    return 'en';
+  }
+  let lang = initialLang();
+  const tr = () => TEXT[lang];
+
+  function applyLang() {
+    const T = tr();
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-t]').forEach(el => { el.textContent = T[el.dataset.t]; });
+    document.querySelectorAll('[data-t-title]').forEach(el => { el.title = T[el.dataset.tTitle]; });
+    document.querySelectorAll('[data-t-aria]').forEach(el => { el.setAttribute('aria-label', T[el.dataset.tAria]); });
+    padBtns.forEach((b, k) => b.setAttribute('aria-label', T.digit(k + 1)));
+    const [cls, html] = DAILY_WORD[lang];
+    const w = $('daily-word'); w.className = 'record-word' + (cls ? ' ' + cls : ''); w.innerHTML = html;
+    document.querySelectorAll('#lang [data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === lang));
+    if (S) { render(); updateStart(); }
+  }
+  function setLang(l) {
+    lang = l;
+    try { localStorage.setItem('brain-gym-lang', l); } catch {}
+    applyLang();
+  }
+  document.querySelectorAll('#lang [data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+
   // ---------- Board DOM ----------
   const cells = [];
   for (let i = 0; i < 81; i++) {
@@ -423,7 +568,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   const padBtns = [];
   for (let d = 1; d <= 9; d++) {
     const b = document.createElement('button');
-    b.type = 'button'; b.innerHTML = `${d}<small></small>`; b.setAttribute('aria-label', `Ziffer ${d}`);
+    b.type = 'button'; b.innerHTML = `${d}<small></small>`; b.setAttribute('aria-label', tr().digit(d));
     b.addEventListener('click', () => input(d));
     pad.appendChild(b); padBtns.push(b);
   }
@@ -448,21 +593,20 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
         for (let d = 1; d <= 9; d++) h += `<i class="${selVal === d ? 'hl' : ''}">${S.notes[i] & (1 << d) ? d : ''}</i>`;
         c.innerHTML = h + '</span>';
       } else c.textContent = '';
-      c.setAttribute('aria-label', `Zeile ${ROW(i) + 1}, Spalte ${COL(i) + 1}: ${v || 'leer'}`);
+      c.setAttribute('aria-label', tr().cell(ROW(i) + 1, COL(i) + 1, v));
       c.tabIndex = i === sel ? 0 : -1;
     }
     padBtns.forEach((b, k) => { const left = 9 - counts[k + 1]; b.disabled = left <= 0 || S.solved; b.querySelector('small').textContent = left > 0 ? left : '✓'; });
     const best = bests()[S.level];
     document.querySelectorAll('.levels [data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === S.level));
     $('notes').setAttribute('aria-pressed', S.notesMode);
-    $('notes-state').textContent = S.notesMode ? 'AN' : 'AUS';
+    $('notes-state').textContent = S.notesMode ? tr().on : tr().off;
     $('best').textContent = best ? fmt(best) : '–';
     $('today').textContent = `${Math.min(Math.max(daily().count, 1), LIMIT)} / ${LIMIT}`;
-    $('again').textContent = limitReached() ? 'Für heute fertig' : 'Nächstes Rätsel';
+    $('again').textContent = limitReached() ? tr().doneToday : tr().next;
     $('timer').textContent = fmt(S.seconds);
     $('win').hidden = !S.solved;
-    if (S.solved) $('win-text').textContent = `${label(S.level)} in ${fmt(S.seconds)}` +
-      (best ? ` · Bestzeit ${fmt(best)}` : '');
+    if (S.solved) $('win-text').textContent = tr().winText(label(S.level), fmt(S.seconds), best && fmt(best));
   }
 
   // ---------- Bestzeiten ----------
@@ -477,7 +621,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   let recTimer = null;
   function celebrate(seconds, previous) {
     $('record-time').textContent = fmt(seconds);
-    $('record-prev').textContent = previous ? `vorher ${fmt(previous)}` : `erste Bestzeit · ${label(S.level)}`;
+    $('record-prev').textContent = previous ? tr().prev(fmt(previous)) : tr().firstBest(label(S.level));
     rec.hidden = false;
     rec.classList.remove('play'); void rec.offsetWidth; rec.classList.add('play');
     clearTimeout(recTimer);
@@ -502,7 +646,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   function closeDaily() { dailyEl.hidden = true; dailyEl.classList.remove('play'); }
   dailyEl.addEventListener('click', closeDaily);
 
-  const label = l => ({ leicht: 'Leicht', mittel: 'Mittel', schwer: 'Schwer', experte: 'Experte' })[l];
+  const label = l => tr()['lv_' + l];
   const fmt = s => `${String((s / 60) | 0).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   // ---------- Actions ----------
@@ -539,12 +683,11 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   }
 
   // ---------- Tipp ----------
-  // Leeres (oder falsch gefülltes) Feld ausgewählt: Tipp setzt dort die richtige Zahl.
-  // Sonst: Tipp verrät keine Zahl, sondern springt zum leichtesten offenen Feld und sagt, warum.
+  // Der Tipp verrät nie eine Zahl: Hinweis zum gewählten leeren Feld oder Sprung zum leichtesten Feld.
   const UNITS = [];
-  for (let r = 0; r < 9; r++) UNITS.push({ name: 'Zeile', cells: [...Array(9)].map((_, c) => r * 9 + c) });
-  for (let c = 0; c < 9; c++) UNITS.push({ name: 'Spalte', cells: [...Array(9)].map((_, r) => r * 9 + c) });
-  for (let b = 0; b < 9; b++) UNITS.push({ name: 'Block', cells: [...Array(9)].map((_, k) => (((b / 3) | 0) * 3 + ((k / 3) | 0)) * 9 + (b % 3) * 3 + (k % 3)) });
+  for (let r = 0; r < 9; r++) UNITS.push({ name: 'row', cells: [...Array(9)].map((_, c) => r * 9 + c) });
+  for (let c = 0; c < 9; c++) UNITS.push({ name: 'col', cells: [...Array(9)].map((_, r) => r * 9 + c) });
+  for (let b = 0; b < 9; b++) UNITS.push({ name: 'box', cells: [...Array(9)].map((_, k) => (((b / 3) | 0) * 3 + ((k / 3) | 0)) * 9 + (b % 3) * 3 + (k % 3)) });
   const candidates = i => { let m = 0x3fe; for (const p of PEERS[i]) if (S.values[p]) m &= ~(1 << S.values[p]); return m; };
   const bits = m => { let n = 0; while (m) { m &= m - 1; n++; } return n; };
   const hasConflict = i => S.values[i] && PEERS[i].some(p => S.values[p] === S.values[i]);
@@ -552,20 +695,19 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   function easiestCell() {
     // bei zwei eigenen Zahlen im Konflikt auf die falsche zeigen, sonst hängt der Tipp an der richtigen fest
     const conflict = [...Array(81).keys()].find(i => !S.puzzle[i] && hasConflict(i) && S.values[i] !== S.solution[i]);
-    if (conflict !== undefined) return { i: conflict, msg: 'Erst diesen Konflikt lösen.' };
+    if (conflict !== undefined) return { i: conflict, kind: 'conflict', msg: tr().hConflict };
     const empty = [...Array(81).keys()].filter(i => !S.values[i]);
     if (!empty.length) return null;
     const single = empty.find(i => bits(candidates(i)) === 1);
-    if (single !== undefined) return { i: single, msg: 'Hier passt nur noch eine Zahl.' };
+    if (single !== undefined) return { i: single, msg: tr().hSingle };
     for (const u of UNITS) for (let d = 1; d <= 9; d++) {
       if (u.cells.some(k => S.values[k] === d)) continue;
       const spots = u.cells.filter(k => !S.values[k] && candidates(k) & (1 << d));
-      const where = { Zeile: 'in dieser Zeile', Spalte: 'in dieser Spalte', Block: 'in diesem Block' }[u.name];
-      if (spots.length === 1) return { i: spots[0], msg: `Eine Zahl passt ${where} nur hier.` };
+      if (spots.length === 1) return { i: spots[0], msg: tr().hHidden(tr().where[u.name]) };
     }
     let best = empty[0];
     for (const i of empty) if (bits(candidates(i)) < bits(candidates(best))) best = i;
-    return { i: best, msg: 'Hier gibt es die wenigsten Möglichkeiten.' };
+    return { i: best, msg: tr().hFewest };
   }
 
   let pulseCell = -1, pulseTimer = null, toastTimer = null;
@@ -577,15 +719,14 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   // Hinweis für ein bestimmtes leeres Feld, ohne eine Zahl zu nennen
   function cellHint(i) {
     const n = bits(candidates(i));
-    if (n === 1) return 'Hier passt nur noch eine Zahl. Prüf Zeile, Spalte und Block.';
+    if (n === 1) return tr().cSingle;
     for (const u of UNITS) {
       if (!u.cells.includes(i)) continue;
       for (let d = 1; d <= 9; d++) {
         if (!(candidates(i) & (1 << d)) || u.cells.some(k => S.values[k] === d)) continue;
         const spots = u.cells.filter(k => !S.values[k] && candidates(k) & (1 << d));
         if (spots.length === 1) {
-          const where = { Zeile: 'in dieser Zeile', Spalte: 'in dieser Spalte', Block: 'in diesem Block' }[u.name];
-          return `Eine der fehlenden Zahlen passt ${where} nur in dieses Feld.`;
+          return tr().cHidden(tr().where[u.name]);
         }
       }
     }
@@ -598,19 +739,19 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
   function hint() {
     if (S.solved) return;
     const conflict = easiestCell();
-    let target, msg;
+    let target, msg, hard = false;
     const sel = S.selected;
     const selEmpty = sel >= 0 && !S.values[sel];
-    if (conflict && conflict.msg.startsWith('Erst')) { target = conflict.i; msg = conflict.msg; }
+    if (conflict && conflict.kind === 'conflict') { target = conflict.i; msg = conflict.msg; }
     else if (selEmpty && (msg = cellHint(sel))) { target = sel; }
     else if (selEmpty && hardHintCell !== sel) {
       // erst sagen, dass das Feld schwierig ist; ein zweiter Tipp springt zu einem leichteren
-      target = sel; hardHintCell = sel;
-      msg = `Hier passen noch ${bits(candidates(sel))} Zahlen. Nochmal „Tipp“ zeigt ein leichteres Feld.`;
+      target = sel; hardHintCell = sel; hard = true;
+      msg = tr().cHard(bits(candidates(sel)));
     }
     else if (conflict) { target = conflict.i; msg = conflict.msg; }
     else return;
-    if (!msg.startsWith('Hier passen noch')) hardHintCell = -1;
+    if (!hard) hardHintCell = -1;
     S.selected = target; pulseCell = target;
     clearTimeout(pulseTimer); pulseTimer = setTimeout(() => { pulseCell = -1; render(); }, 1800);
     render(); save(); toast(msg);
@@ -660,6 +801,13 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     }
   });
 
+  function updateStart() {
+    const done = limitReached() && S.solved;
+    const inProgress = !S.solved && S.values.some((v, k) => v && !S.puzzle[k]);
+    $('start-info').textContent = done ? tr().allDone(LIMIT) : tr().startInfo(Math.min(Math.max(daily().count, 1), LIMIT), LIMIT);
+    $('start-label').textContent = inProgress ? tr().resume : tr().go;
+  }
+
   function start(data) {
     const saved = (data && data.S) || store.get();
     if (saved && saved.solution && saved.values) {
@@ -669,11 +817,7 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
     } else requestNewGame('mittel');
 
     // Start-Bildschirm: zeigt den Tagesstand; „Bis morgen!“ erst nach dem Tippen auf Start
-    const done = limitReached() && S.solved;
-    const inProgress = !S.solved && S.values.some((v, k) => v && !S.puzzle[k]);
-    $('start-info').textContent = done ? `Heute alle ${LIMIT} Rätsel geschafft`
-      : `Heute: Rätsel ${Math.min(Math.max(daily().count, 1), LIMIT)} von ${LIMIT}`;
-    $('start-label').textContent = inProgress ? 'Weiterspielen' : 'Los geht’s!';
+    applyLang();
     $('start-btn').addEventListener('click', () => {
       const el = $('start'); el.hidden = true; el.classList.remove('play');
       if (S.solved && limitReached()) showDaily();
