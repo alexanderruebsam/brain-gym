@@ -1,5 +1,5 @@
 // Offline-Unterstützung für Brain Gym. Bei jeder Änderung an der App VERSION erhöhen.
-const VERSION = 'v16';
+const VERSION = 'v17';
 const CACHE = `brain-gym-${VERSION}`;
 const FILES = [
   './',
@@ -13,7 +13,7 @@ const FILES = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
@@ -34,7 +34,7 @@ self.addEventListener('fetch', event => {
   // Seite: erst Netz (damit Updates ankommen), sonst Cache
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-cache' }) // am Server nachfragen statt bis zu 10 Min aus dem Browser-Cache
         .then(res => { caches.open(CACHE).then(c => c.put('./index.html', res.clone())); return res; })
         .catch(() => caches.match('./index.html'))
     );
