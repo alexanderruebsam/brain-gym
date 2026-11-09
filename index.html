@@ -226,6 +226,10 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 .record-word .lj1 { font-size: min(19vw, 12.5vh, 6.5rem); margin-right: 1.1em; }
 .record-word .lj2 { font-size: min(23vw, 15.5vh, 8.25rem); margin-left: .35em; }
 .record-word.en { margin-bottom: 14px; translate: -14px 0; }
+.record-word.it { margin-bottom: 14px; translate: -18px 0; }
+.record-word.de { translate: -15px 0; }
+.record-word .li1 { font-size: min(20vw, 14vh, 7.25rem); margin-right: 2.4em; }
+.record-word .li2 { font-size: min(18.5vw, 14vh, 7.5rem); margin-left: .3em; }
 .record-word .le1 { font-size: min(17vw, 12vh, 6rem); margin-right: 1.2em; }
 .record-word .le2 { font-size: min(14vw, 12.5vh, 6.25rem); margin-left: .3em; }
 html:lang(ja) .start-btn { padding: 13px 30px; }
@@ -321,6 +325,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
   <div class="lang" id="lang" role="group" aria-label="Sprache" data-t-aria="language">
     <button type="button" data-lang="de" lang="de">DE</button>
     <button type="button" data-lang="en" lang="en">EN</button>
+    <button type="button" data-lang="it" lang="it">IT</button>
     <button type="button" data-lang="ja" lang="ja">日本語</button>
   </div>
 </div>
@@ -491,6 +496,30 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
       cHidden: w => `One of the missing numbers fits only in this cell ${w}.`,
       cHard: n => `${n} numbers still fit here. Tap “Hint” again for an easier cell.`,
     },
+    it: {
+      today: 'Oggi', best: 'Record', time: 'Tempo', levels: 'Difficoltà', grid: 'Griglia del sudoku', language: 'Lingua',
+      lv_leicht: 'Facile', lv_mittel: 'Medio', lv_schwer: 'Difficile', lv_experte: 'Esperto',
+      newGame: 'Nuova partita', solved: 'Risolto!', next: 'Prossimo puzzle', doneToday: 'Finito per oggi',
+      undo: 'Annulla', erase: 'Cancella', notes: 'Note', hint: 'Aiuto', on: 'ON', off: 'OFF',
+      undoTitle: 'Annulla (Ctrl+Z)', eraseTitle: 'Cancella (Canc)', notesTitle: 'Note (N)', hintTitle: 'Aiuto (H)',
+      keys: 'Tastiera: cifre 1–9, frecce, N per le note, Canc per cancellare. Arancione significa che il numero compare due volte nella riga, nella colonna o nel riquadro.',
+      tapClose: 'Tocca per chiudere', tag: 'Sudoku · tre puzzle al giorno',
+      go: 'Si parte!', resume: 'Continua',
+      startInfo: (n, l) => `Oggi: puzzle ${n} di ${l}`, allDone: l => `Oggi tutti i ${l} puzzle completati`,
+      dailyAria: 'A domani', dailySr: 'A domani! Oggi hai giocato tutti e tre i puzzle.',
+      until: (h, m) => h ? `Nuovi puzzle tra ${h} h ${m} min` : `Nuovi puzzle tra ${m} min`,
+      winText: (lv, t, b) => `${lv} in ${t}` + (b ? ` · Record ${b}` : ''),
+      prev: t => `prima ${t}`, firstBest: lv => `primo record · ${lv}`,
+      digit: d => `Cifra ${d}`, cell: (r, c, v) => `Riga ${r}, colonna ${c}: ${v || 'vuota'}`,
+      where: { row: 'in questa riga', col: 'in questa colonna', box: 'in questo riquadro' },
+      hConflict: 'Prima risolvi questo conflitto.',
+      hSingle: 'Qui ci sta un solo numero.',
+      hHidden: w => `Un numero ci sta solo qui ${w}.`,
+      hFewest: 'Questa casella ha meno possibilità.',
+      cSingle: 'Qui ci sta un solo numero. Controlla riga, colonna e riquadro.',
+      cHidden: w => `Uno dei numeri mancanti ${w} ci sta solo in questa casella.`,
+      cHard: n => `Qui ci stanno ancora ${n} numeri. Tocca di nuovo “Aiuto” per una casella più facile.`,
+    },
     ja: {
       today: '今日', best: 'ベスト', time: 'タイム', levels: '難易度', grid: '数独の盤面', language: '言語',
       lv_leicht: '初級', lv_mittel: '中級', lv_schwer: '上級', lv_experte: '達人',
@@ -518,14 +547,16 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
   };
   // „Bis morgen!“-Schriftzug je Sprache (Logo und „NEW BEST TIME!“ bleiben überall englisch)
   const DAILY_WORD = {
-    de: ['', `<div class="line l1 lb"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">I</span><span style="--i:2">S</span></div>
+    de: ['de', `<div class="line l1 lb"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">I</span><span style="--i:2">S</span></div>
       <div class="line lm"><span style="--i:3; translate:0 -4px">M</span><span style="--i:4">O</span><span style="--i:5; translate:0 6px">R</span><span style="--i:6">G</span><span style="--i:7; translate:0 -6px">E</span><span style="--i:8">N</span><span style="--i:9; rotate:6deg">!</span></div>`],
     en: ['en', `<div class="line le1"><span style="--i:0; rotate:-4deg">S</span><span style="--i:1; translate:0 6px">E</span><span style="--i:2">E</span>&nbsp;<span style="--i:3">Y</span><span style="--i:4; translate:0 -4px">A</span></div>
       <div class="line le2"><span style="--i:5; translate:0 -4px">T</span><span style="--i:6">O</span><span style="--i:7; translate:0 6px">M</span><span style="--i:8">O</span><span style="--i:9; translate:0 -6px">R</span><span style="--i:10">R</span><span style="--i:11">O</span><span style="--i:12; translate:0 6px">W</span><span style="--i:13; rotate:6deg">!</span></div>`],
+    it: ['it', `<div class="line li1"><span style="--i:0; rotate:-4deg">A</span></div>
+      <div class="line li2"><span style="--i:1; translate:0 -4px">D</span><span style="--i:2">O</span><span style="--i:3; translate:0 6px">M</span><span style="--i:4">A</span><span style="--i:5; translate:0 -6px">N</span><span style="--i:6">I</span><span style="--i:7; rotate:6deg">!</span></div>`],
     ja: ['ja', `<div class="line lj1"><span style="--i:0; rotate:-4deg">ま</span><span style="--i:1; translate:0 6px">た</span></div>
       <div class="line lj2"><span style="--i:2; translate:0 -4px">明</span><span style="--i:3">日</span><span style="--i:4; rotate:6deg">！</span></div>`],
   };
-  const LANGS = ['de', 'en', 'ja'];
+  const LANGS = ['de', 'en', 'it', 'ja'];
   function initialLang() {
     try { const v = localStorage.getItem('brain-gym-lang'); if (LANGS.includes(v)) return v; } catch {}
     // erster Start: Gerätesprache übernehmen, sonst Englisch
