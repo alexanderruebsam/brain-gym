@@ -200,12 +200,20 @@ button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); ou
 .overlay p { margin: 0 0 16px; color: var(--muted); }
 .overlay .new { margin: 0; }
 
-.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .tool { padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--muted); }
 .tool svg { width: 22px; height: 22px; stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tool[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .tool[aria-pressed="true"] svg { stroke: var(--accent); }
 .tool .badge { font-size: 0.65rem; font-weight: 700; letter-spacing: .06em; }
+/* Joker im Retro-Look der Rekord-Screens: Lila, gelbe 3D-Zahl, oranger Versatzschatten (in beiden Themes gleich) */
+.tool.joker { background: #7b2cbf; border-color: #7b2cbf; color: #fff4dd; box-shadow: 3px 3px 0 #ec6a2a; }
+.tool.joker b {
+  font-family: "Luckiest Guy", "Arial Black", sans-serif; font-weight: 400; font-size: 1.85rem; line-height: 22px; height: 22px;
+  padding-top: 5px; color: #f9d342; text-shadow: .04em .04em 0 #ec6a2a, .08em .08em 0 #ec6a2a, .1em .14em 0 #b03cf0;
+}
+.tool.joker:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #ec6a2a; }
+.tool.joker:disabled { opacity: .35; cursor: default; box-shadow: none; transform: none; }
 
 .pad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
 .pad button {
@@ -292,10 +300,13 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
     <button class="tool" id="hint" title="Tipp (H)" data-t-title="hintTitle">
       <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg><span data-t="hint">Tipp</span>
     </button>
+    <button class="tool joker" id="joker" title="Joker: zeigt einen Fehler (J)" data-t-title="jokerTitle">
+      <b id="joker-n" aria-hidden="true">3</b><span data-t="joker">Joker</span>
+    </button>
   </div>
 
   <div class="pad" id="pad"></div>
-  <p class="hint-line" data-t="keys">Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen. Orange heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.</p>
+  <p class="hint-line" data-t="keys">Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen, J für Joker. Orange heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.</p>
 </div>
 
 <div class="record" id="record" hidden role="dialog" aria-live="assertive" aria-label="New best time">
@@ -412,6 +423,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
 
   // ---------- Tageslimit ----------
   const LIMIT = 3;
+  const JOKERS = 3; // Joker pro Rätsel
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
   function daily() {
     try { const v = JSON.parse(localStorage.getItem('sudoku-daily') || 'null'); if (v && v.date === today()) return v; } catch {}
@@ -439,7 +451,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
     pendingDaily = false;
     const { puzzle, solution } = generate(level);
     S = { level, puzzle, solution, values: puzzle.slice(), notes: new Array(81).fill(0),
-          selected: puzzle.indexOf(0), notesMode: false, hints: 0, seconds: 0, history: [], solved: false };
+          selected: puzzle.indexOf(0), notesMode: false, hints: 0, jokers: JOKERS, jokerCell: -1, seconds: 0, history: [], solved: false };
     closeRecord(); closeDaily(); render(); save(); startTimer();
   }
 
@@ -454,7 +466,8 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
       newGame: 'Neues Spiel', solved: 'Gelöst!', next: 'Nächstes Rätsel', doneToday: 'Für heute fertig',
       undo: 'Zurück', erase: 'Löschen', notes: 'Notizen', hint: 'Tipp', on: 'AN', off: 'AUS',
       undoTitle: 'Rückgängig (Strg+Z)', eraseTitle: 'Löschen (Entf)', notesTitle: 'Notizen (N)', hintTitle: 'Tipp (H)',
-      keys: 'Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen. Orange heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.',
+      joker: 'Joker', jokerTitle: 'Joker: zeigt einen Fehler (J)', jokerFound: 'Hier stimmt etwas nicht.', jokerNone: 'Bisher alles richtig!', jokerLeft: n => `Joker, noch ${n}`,
+      keys: 'Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen, J für Joker. Orange heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.',
       tapClose: 'Tippen zum Schließen', tag: 'Sudoku · drei Rätsel am Tag',
       go: 'Los geht’s!', resume: 'Weiterspielen',
       startInfo: (n, l) => `Heute: Rätsel ${n} von ${l}`, allDone: l => `Heute alle ${l} Rätsel geschafft`,
@@ -478,7 +491,8 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
       newGame: 'New game', solved: 'Solved!', next: 'Next puzzle', doneToday: 'Done for today',
       undo: 'Undo', erase: 'Erase', notes: 'Notes', hint: 'Hint', on: 'ON', off: 'OFF',
       undoTitle: 'Undo (Ctrl+Z)', eraseTitle: 'Erase (Del)', notesTitle: 'Notes (N)', hintTitle: 'Hint (H)',
-      keys: 'Keyboard: digits 1–9, arrow keys, N for notes, Del to erase. Orange means the number appears twice in a row, column or box.',
+      joker: 'Joker', jokerTitle: 'Joker: shows one mistake (J)', jokerFound: 'Something’s wrong here.', jokerNone: 'All correct so far!', jokerLeft: n => `Joker, ${n} left`,
+      keys: 'Keyboard: digits 1–9, arrow keys, N for notes, Del to erase, J for joker. Orange means the number appears twice in a row, column or box.',
       tapClose: 'Tap to close', tag: 'Sudoku · three puzzles a day',
       go: 'Let’s go!', resume: 'Continue',
       startInfo: (n, l) => `Today: puzzle ${n} of ${l}`, allDone: l => `All ${l} puzzles done today`,
@@ -502,7 +516,8 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
       newGame: 'Nuova partita', solved: 'Risolto!', next: 'Prossimo puzzle', doneToday: 'Finito per oggi',
       undo: 'Annulla', erase: 'Cancella', notes: 'Note', hint: 'Aiuto', on: 'ON', off: 'OFF',
       undoTitle: 'Annulla (Ctrl+Z)', eraseTitle: 'Cancella (Canc)', notesTitle: 'Note (N)', hintTitle: 'Aiuto (H)',
-      keys: 'Tastiera: cifre 1–9, frecce, N per le note, Canc per cancellare. Arancione significa che il numero compare due volte nella riga, nella colonna o nel riquadro.',
+      joker: 'Jolly', jokerTitle: 'Jolly: mostra un errore (J)', jokerFound: 'Qui c’è qualcosa che non va.', jokerNone: 'Finora tutto giusto!', jokerLeft: n => `Jolly, ne restano ${n}`,
+      keys: 'Tastiera: cifre 1–9, frecce, N per le note, Canc per cancellare, J per il jolly. Arancione significa che il numero compare due volte nella riga, nella colonna o nel riquadro.',
       tapClose: 'Tocca per chiudere', tag: 'Sudoku · tre puzzle al giorno',
       go: 'Si parte!', resume: 'Continua',
       startInfo: (n, l) => `Oggi: puzzle ${n} di ${l}`, allDone: l => `Oggi tutti i ${l} puzzle completati`,
@@ -526,7 +541,8 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
       newGame: '新しい問題', solved: 'クリア！', next: '次の問題', doneToday: '今日はここまで',
       undo: '戻す', erase: '消す', notes: 'メモ', hint: 'ヒント', on: 'オン', off: 'オフ',
       undoTitle: '元に戻す (Ctrl+Z)', eraseTitle: '消す (Del)', notesTitle: 'メモ (N)', hintTitle: 'ヒント (H)',
-      keys: 'キーボード：数字 1–9、矢印キー、N でメモ、Del で消去。オレンジは、行・列・ブロックに同じ数字が重なっている印です。',
+      joker: 'ジョーカー', jokerTitle: 'ジョーカー：間違いをひとつ表示 (J)', jokerFound: 'ここが間違っています。', jokerNone: 'ここまで全部正解！', jokerLeft: n => `ジョーカー 残り${n}`,
+      keys: 'キーボード：数字 1–9、矢印キー、N でメモ、Del で消去、J でジョーカー。オレンジは、行・列・ブロックに同じ数字が重なっている印です。',
       tapClose: 'タップして閉じる', tag: '数独・1日3問',
       go: 'スタート！', resume: 'つづける',
       startInfo: (n, l) => `今日：${l}問中${n}問目`, allDone: l => `今日の${l}問はすべてクリア`,
@@ -618,6 +634,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
       if (i === sel) c.classList.add('selected');
       if (i === pulseCell) c.classList.add('pulse');
       if (v && PEERS[i].some(p => S.values[p] === v)) c.classList.add(S.puzzle[i] ? 'conflict' : 'wrong');
+      if (i === S.jokerCell && v && v !== S.solution[i]) c.classList.add('wrong');
       if (v) { c.textContent = v; }
       else if (S.notes[i]) {
         let h = '<span class="notes">';
@@ -631,6 +648,9 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
     const best = bests()[S.level];
     document.querySelectorAll('.levels [data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === S.level));
     $('notes').setAttribute('aria-pressed', S.notesMode);
+    $('joker-n').textContent = S.jokers;
+    $('joker').disabled = S.solved || S.jokers <= 0;
+    $('joker').setAttribute('aria-label', tr().jokerLeft(S.jokers));
     $('notes-state').textContent = S.notesMode ? tr().on : tr().off;
     $('best').textContent = best ? fmt(best) : '–';
     $('today').textContent = `${Math.min(Math.max(daily().count, 1), LIMIT)} / ${LIMIT}`;
@@ -788,6 +808,20 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
     render(); save(); toast(msg);
   }
 
+  // Joker: zeigt genau eine falsche Zahl (verglichen mit der Lösung), korrigiert sie aber nicht.
+  // Er ist danach verbraucht, auch wenn alles richtig war.
+  function joker() {
+    if (S.solved || S.jokers <= 0) return;
+    S.jokers--;
+    const wrong = [...Array(81).keys()].filter(i => S.values[i] && !S.puzzle[i] && S.values[i] !== S.solution[i]);
+    // lieber einen Fehler zeigen, den man noch nicht sieht (ohne orangen Konflikt)
+    const target = wrong.find(i => !hasConflict(i)) ?? wrong[0];
+    if (target === undefined) { render(); save(); toast(tr().jokerNone); return; }
+    S.jokerCell = target; S.selected = target; pulseCell = target;
+    clearTimeout(pulseTimer); pulseTimer = setTimeout(() => { pulseCell = -1; render(); }, 1800);
+    render(); save(); toast(tr().jokerFound);
+  }
+
   function checkWin() {
     if (!S.values.every((v, k) => v === S.solution[k])) return;
     S.solved = true; stopTimer();
@@ -811,6 +845,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
   $('undo').addEventListener('click', undo);
   $('erase').addEventListener('click', erase);
   $('hint').addEventListener('click', hint);
+  $('joker').addEventListener('click', joker);
   $('notes').addEventListener('click', () => { S.notesMode = !S.notesMode; render(); save(); });
 
   document.addEventListener('keydown', e => {
@@ -823,6 +858,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
     if (k === 'Backspace' || k === 'Delete' || k === '0') { erase(); e.preventDefault(); return; }
     if (k === 'n' || k === 'N') { S.notesMode = !S.notesMode; render(); save(); return; }
     if (k === 'h' || k === 'H') { hint(); return; }
+    if (k === 'j' || k === 'J') { joker(); return; }
     const mv = { ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1 }[k];
     if (mv) {
       e.preventDefault();
@@ -842,7 +878,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
   function start(data) {
     const saved = (data && data.S) || store.get();
     if (saved && saved.solution && saved.values) {
-      S = saved; render(); startTimer();
+      S = saved; if (S.jokers === undefined) { S.jokers = JOKERS; S.jokerCell = -1; } render(); startTimer();
     } else if (limitReached()) {
       newGame('mittel'); // Spielstand fehlt, Kontingent aber verbraucht
     } else requestNewGame('mittel');
