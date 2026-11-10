@@ -432,13 +432,19 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
   function setDaily(v) { try { localStorage.setItem('sudoku-daily', JSON.stringify(v)); } catch {} }
   const limitReached = () => daily().count >= LIMIT;
 
-  // Startet ein neues Rätsel, solange das Tageskontingent reicht; sonst kommt „Bis morgen!“
+  // Startet ein neues Rätsel, solange das Tageskontingent reicht; sonst kommt „Bis morgen!“.
+  // Gezählt wird ein Rätsel erst beim ersten Spielzug, Level wechseln oder neu mischen kostet nichts.
   function requestNewGame(level) {
-    const d = daily();
-    if (d.count >= LIMIT) { showDaily(); return; }
-    d.count++; setDaily(d);
+    if (limitReached()) { showDaily(); return; }
     newGame(level);
   }
+  function countIfNew() {
+    if (S.counted !== false) return; // ältere Spielstände wurden schon beim Start gezählt
+    const d = daily(); d.count++; setDaily(d);
+    S.counted = true;
+  }
+  // Nummer des aktuellen Rätsels heute: ein noch nicht gezähltes Rätsel ist das nächste
+  const puzzleNo = () => Math.min(Math.max(daily().count + (S && S.counted === false ? 1 : 0), 1), LIMIT);
 
   function untilTomorrow() {
     const now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -451,7 +457,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
     pendingDaily = false;
     const { puzzle, solution } = generate(level);
     S = { level, puzzle, solution, values: puzzle.slice(), notes: new Array(81).fill(0),
-          selected: puzzle.indexOf(0), notesMode: false, hints: 0, jokers: JOKERS, jokerCell: -1, seconds: 0, history: [], solved: false };
+          selected: puzzle.indexOf(0), notesMode: false, hints: 0, jokers: JOKERS, jokerCell: -1, seconds: 0, history: [], solved: false, counted: false };
     closeRecord(); closeDaily(); render(); save(); startTimer();
   }
 
@@ -653,7 +659,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
     $('joker').setAttribute('aria-label', tr().jokerLeft(S.jokers));
     $('notes-state').textContent = S.notesMode ? tr().on : tr().off;
     $('best').textContent = best ? fmt(best) : '–';
-    $('today').textContent = `${Math.min(Math.max(daily().count, 1), LIMIT)} / ${LIMIT}`;
+    $('today').textContent = `${puzzleNo()} / ${LIMIT}`;
     $('again').textContent = limitReached() ? tr().doneToday : tr().next;
     $('timer').textContent = fmt(S.seconds);
     $('win').hidden = !S.solved;
@@ -706,6 +712,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
   function input(d) {
     const i = S.selected;
     if (i < 0 || S.puzzle[i] || S.solved) return;
+    countIfNew();
     if (S.notesMode) {
       if (S.values[i]) return;
       pushHistory(i);
@@ -871,7 +878,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
   function updateStart() {
     const done = limitReached() && S.solved;
     const inProgress = !S.solved && S.values.some((v, k) => v && !S.puzzle[k]);
-    $('start-info').textContent = done ? tr().allDone(LIMIT) : tr().startInfo(Math.min(Math.max(daily().count, 1), LIMIT), LIMIT);
+    $('start-info').textContent = done ? tr().allDone(LIMIT) : tr().startInfo(puzzleNo(), LIMIT);
     $('start-label').textContent = inProgress ? tr().resume : tr().go;
   }
 
@@ -880,7 +887,7 @@ html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label
     if (saved && saved.solution && saved.values) {
       S = saved; if (S.jokers === undefined) { S.jokers = JOKERS; S.jokerCell = -1; } render(); startTimer();
     } else if (limitReached()) {
-      newGame('mittel'); // Spielstand fehlt, Kontingent aber verbraucht
+      newGame('mittel'); S.counted = true; // Spielstand fehlt, Kontingent aber verbraucht
     } else requestNewGame('mittel');
 
     // Start-Bildschirm: zeigt den Tagesstand; „Bis morgen!“ erst nach dem Tippen auf Start
