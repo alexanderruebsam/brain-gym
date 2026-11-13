@@ -1,0 +1,960 @@
+<title>Brain Gym</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=Luckiest+Guy&family=Dela+Gothic+One&display=swap">
+<style>
+/* Layout: one centred play column — header, grid, number pad; graph-paper ground, ink-blue pencil accent */
+:root {
+  --bg: #eef1f4;
+  --paper: #fbfcfd;
+  --ink: #1c2633;
+  --muted: #5d6b7c;
+  --line: #c9d1db;
+  --line-strong: #2b3a4d;
+  --accent: #7b2cbf;
+  --accent-soft: #efe2fa;
+  --peer: #e8edf3;
+  --same: #dcc3f3;
+  --error: #d9561a;
+  --error-soft: #fde4d3;
+  --good: #f9d342;
+  --good-side: #ec6a2a;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --paper: #18202a; --ink: #e6ebf1; --muted: #93a1b3;
+    --line: #2d3947; --line-strong: #8797ab; --accent: #c58af9; --accent-soft: #33224a;
+    --peer: #1f2935; --same: #4a2d6e; --error: #ff8a4c; --error-soft: #4a2615; --good: #f9d342;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --paper: #18202a; --ink: #e6ebf1; --muted: #93a1b3;
+  --line: #2d3947; --line-strong: #8797ab; --accent: #c58af9; --accent-soft: #33224a;
+  --peer: #1f2935; --same: #4a2d6e; --error: #ff8a4c; --error-soft: #4a2615; --good: #f9d342;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px;
+}
+.app { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 2rem; letter-spacing: -0.02em; margin: 0; line-height: 1; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.stats { display: flex; gap: 16px; font-variant-numeric: tabular-nums; }
+.stat { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.stat b { font-size: 1.15rem; }
+.label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.levels { display: flex; gap: 6px; flex-wrap: wrap; }
+.levels button, .tool, .new {
+  font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line);
+  border-radius: 8px; cursor: pointer;
+}
+.levels button { padding: 7px 12px; font-size: 0.9rem; }
+.levels button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.new { margin-left: auto; padding: 7px 12px; font-size: 0.9rem; font-weight: 700; color: var(--accent); }
+button:focus-visible, .cell:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.board-wrap { position: relative; }
+.board {
+  display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; width: 100%; max-width: 100%;
+  background: var(--paper); border: 2.5px solid var(--line-strong); border-radius: 6px; overflow: hidden;
+  box-shadow: 0 10px 30px -18px rgba(20, 30, 50, 0.45);
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
+}
+.cell {
+  position: relative; display: grid; place-items: center; border: 0; padding: 0; margin: 0;
+  border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  background: var(--paper); color: var(--accent); font-family: var(--body);
+  font-size: clamp(1.1rem, 6vw, 1.9rem); cursor: pointer; transition: background-color .12s;
+}
+.cell:nth-child(9n) { border-right: 0; }
+.cell:nth-child(9n+3), .cell:nth-child(9n+6) { border-right: 2px solid var(--line-strong); }
+.cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--line-strong); }
+.cell:nth-child(n+73) { border-bottom: 0; }
+.cell.given { color: var(--ink); font-weight: 700; }
+.cell.peer { background: var(--peer); }
+.cell.same { background: var(--same); }
+.cell.selected { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.cell.wrong { color: var(--error); background: var(--error-soft); }
+.cell.conflict { background: var(--error-soft); }
+.cell.pulse { animation: pulse .6s ease-in-out 3; z-index: 1; }
+@keyframes pulse { 50% { box-shadow: inset 0 0 0 4px var(--accent); background: var(--same); } }
+.toast {
+  position: absolute; left: 50%; bottom: 12px; translate: -50% 0; width: max-content; max-width: calc(100% - 24px);
+  background: var(--ink); color: var(--paper); font-size: 0.85rem; line-height: 1.35; text-align: center;
+  padding: 8px 14px; border-radius: 10px; box-shadow: 0 6px 20px -8px rgba(0,0,0,.5); pointer-events: none;
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- Rekord-Feier: verspielte 3D-Blockschrift, bewusst ein fester Look auf Weiß in beiden Themes ---- */
+.record {
+  --r-bg: #ffffff; --r-face: #f9d342; --r-side: #ec6a2a; --r-under: #b03cf0; --r-plum: #7b2cbf; --r-ink: #5b3a78;
+  --r-block: "Luckiest Guy", "Dela Gothic One", "Arial Black", Impact, sans-serif;
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; overflow: hidden;
+  background: var(--r-bg); cursor: pointer;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+}
+.record-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 36px; text-align: center; }
+.record-word {
+  display: flex; flex-direction: column; align-items: center; transform: rotate(-8deg) skewX(-4deg);
+  font-family: var(--r-block); color: var(--r-face); line-height: 0.86;
+}
+.record-word .line { display: flex; }
+.record-word .line span {
+  display: inline-block;
+  text-shadow:
+    .016em .016em 0 var(--r-side), .032em .032em 0 var(--r-side), .048em .048em 0 var(--r-side), .064em .064em 0 var(--r-side),
+    .08em .08em 0 var(--r-side), .096em .096em 0 var(--r-side), .112em .112em 0 var(--r-side), .128em .128em 0 var(--r-side),
+    .144em .144em 0 var(--r-side), .16em .16em 0 var(--r-side), .176em .176em 0 var(--r-side),
+    .016em .188em 0 var(--r-under), .032em .2em 0 var(--r-under), .048em .212em 0 var(--r-under), .064em .224em 0 var(--r-under),
+    .08em .236em 0 var(--r-under), .096em .248em 0 var(--r-under), .112em .26em 0 var(--r-under), .128em .272em 0 var(--r-under),
+    .144em .284em 0 var(--r-under), .16em .296em 0 var(--r-under), .176em .308em 0 var(--r-under);
+}
+.record-word .l1 { font-size: min(15vw, 10vh, 5.25rem); margin-right: 1.3em; }
+.record-word .l2 { font-size: min(17vw, 11.5vh, 6rem); margin-left: 0.1em; }
+.record-word .l3 { font-size: min(18.5vw, 12.5vh, 6.5rem); margin-left: 1.15em; }
+.record-word .lb { font-size: min(17vw, 12vh, 6rem); margin-right: 1.6em; }
+.record-word .ls1 { font-size: min(18vw, 13vh, 6.5rem); margin-right: 0.5em; }
+.record-word .ls2 { font-size: min(25vw, 18vh, 9rem); margin-left: 1em; }
+#start { cursor: default; }
+/* Die 3D-Tiefe ragt nach rechts und GYM ist eingerückt: Schriftzug etwas nach links, damit er optisch mittig sitzt */
+#start .record-word { translate: -8% 0; }
+.start-tag { margin: 0; color: var(--r-ink); font-family: var(--body); font-size: 0.95rem; letter-spacing: 0.04em; }
+/* Start-Button im Look der Info-Chips (.record-time): gleiche Form, Farben, Schriften und Zweizeiligkeit */
+.start-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--r-plum); color: #fff4dd; border: 0; border-radius: 999px;
+  padding: 17.5px 30px 8.5px; cursor: pointer; /* Luckiest Guy hat unten mehr Leerraum: oben mehr Abstand, damit die Schrift optisch mittig sitzt */ box-shadow: 6px 6px 0 var(--r-side); font-family: var(--body);
+  transition: transform .08s, box-shadow .08s;
+}
+.start-btn b { font-family: var(--r-block); font-weight: 400; font-size: 2.1rem; line-height: 1; letter-spacing: .03em; color: var(--r-face); text-transform: uppercase; }
+.start-btn span { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+@media (hover: hover) { .start-btn:hover { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--r-side); } }
+.start-btn:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0 var(--r-side); }
+.start-btn:focus { outline: none; }
+.start-btn:focus-visible { outline: 3px solid var(--r-plum); outline-offset: 6px; } /* nur bei Tastaturbedienung */
+.start-info { margin: 0; color: var(--r-ink); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.record.play .start-btn { animation: rise .5s ease-out .45s both; }
+.record-word .lm { font-size: min(14vw, 12.5vh, 6.25rem); margin-left: 0.5em; }
+.record-time {
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  background: var(--r-plum); color: #fff4dd; border-radius: 999px;
+  /* Luckiest Guy hat unten mehr Leerraum: oben mehr Abstand, damit beide Zeilen optisch mittig sitzen */
+  padding: 12.3px 30px 7.7px; box-shadow: 6px 6px 0 var(--r-side); font-family: var(--body);
+}
+.record-time b { font-family: var(--r-block); font-weight: 400; font-size: 2.1rem; line-height: 1; letter-spacing: .03em; color: var(--r-face); font-variant-numeric: tabular-nums; }
+.record-time span { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.record-close { margin: 0; color: var(--r-ink); font-size: 0.8rem; }
+
+.record.play .record-word { animation: pop .75s cubic-bezier(.2, 1.6, .4, 1) both; }
+.record.play .line span { animation: bob 2.2s ease-in-out infinite; animation-delay: calc(var(--i) * .12s + .8s); }
+.record.play .record-time { animation: rise .5s ease-out .45s both; }
+@keyframes pop { 0% { transform: rotate(-30deg) skewX(-4deg) scale(.1); opacity: 0; } 100% { transform: rotate(-8deg) skewX(-4deg) scale(1); opacity: 1; } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes rise { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .record.play * { animation: none !important; } }
+.notes { position: absolute; inset: 2px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+.notes i { font-style: normal; font-size: clamp(0.5rem, 2.3vw, 0.72rem); color: var(--muted); display: grid; place-items: center; line-height: 1; }
+.notes i.hl { color: var(--accent); font-weight: 700; }
+
+.overlay {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  background: color-mix(in srgb, var(--paper) 88%, transparent); border-radius: 6px; padding: 24px;
+}
+.overlay h2 {
+  font-family: "Luckiest Guy", "Dela Gothic One", "Arial Black", sans-serif; font-weight: 400; font-size: 3rem; line-height: 1;
+  margin: 0 0 14px; color: var(--good); transform: rotate(-4deg);
+  text-shadow: .02em .02em 0 var(--good-side), .04em .04em 0 var(--good-side), .06em .06em 0 var(--good-side), .08em .08em 0 var(--good-side),
+    .02em .1em 0 var(--accent), .04em .12em 0 var(--accent), .06em .14em 0 var(--accent), .08em .16em 0 var(--accent);
+}
+.overlay p { margin: 0 0 16px; color: var(--muted); }
+.overlay .new { margin: 0; }
+
+.tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.tool { padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.tool svg { width: 22px; height: 22px; stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tool[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.tool[aria-pressed="true"] svg { stroke: var(--accent); }
+.tool { position: relative; }
+.tool .badge {
+  position: absolute; top: -7px; right: -6px; padding: 3px 6px 2px; border-radius: 999px;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: .06em; line-height: 1;
+  background: var(--paper); color: var(--muted); border: 1px solid var(--line);
+}
+.tool[aria-pressed="true"] .badge { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+/* Bombe im Retro-Look der Rekord-Screens: Lila, oranger Versatzschatten, gelber Zähler (in beiden Themes gleich) */
+.tool.bomb { position: relative; background: #7b2cbf; border-color: #7b2cbf; color: #fff4dd; box-shadow: 3px 3px 0 #ec6a2a; }
+.tool.bomb svg.bomb-ico { width: 34px; height: 34px; margin: -7px 0 -5px; stroke: none; }
+.tool.bomb .count {
+  position: absolute; top: -7px; right: -6px; min-width: 22px; height: 22px; border-radius: 999px; padding: 4px 5px 0;
+  background: #f9d342; color: #7b2cbf; box-shadow: 2px 2px 0 #ec6a2a;
+  font: 400 0.95rem/18px "Luckiest Guy", "Arial Black", sans-serif; text-align: center;
+}
+.tool.bomb:not(:disabled) .fuse-spark { transform-origin: 27px 5px; animation: spark .5s ease-in-out infinite alternate; }
+@keyframes spark { to { transform: scale(1.35) rotate(25deg); } }
+.tool.bomb:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #ec6a2a; }
+.tool.bomb:disabled { opacity: .35; cursor: default; box-shadow: none; transform: none; }
+.tool.bomb:disabled .count { box-shadow: none; }
+/* Explosion über den gesprengten Feldern: weißer Kern, Feuerball aus Wolken, die zu Rauch nachdunkeln, dazu Trümmer und Funken */
+.boom { position: absolute; pointer-events: none; z-index: 5; }
+.boom > * { position: absolute; left: 50%; top: 50%; border-radius: 50%; }
+.boom .core {
+  width: 168%; height: 168%; translate: -50% -50%; background: #fffbe8;
+  box-shadow: 0 0 14px 6px #f9d342; animation: core .35s ease-out forwards;
+}
+.boom .puff {
+  width: var(--s); height: var(--s); translate: calc(-50% + var(--x)) calc(-50% + var(--y));
+  animation: puff 1.15s cubic-bezier(.25, .8, .35, 1) var(--t) both;
+}
+.boom .deb { width: 3px; height: 3px; border-radius: 2px; background: #2c1a33; animation: deb .8s cubic-bezier(.15, .8, .3, 1) .08s both; }
+.boom .em { width: 6px; height: 6px; margin: -3px; background: #f9d342; box-shadow: 0 0 6px #ec6a2a; animation: em .9s cubic-bezier(.2, .7, .3, 1) .1s both; }
+@keyframes core { 0% { transform: scale(.1); opacity: 1; } 45% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.15); opacity: 0; } }
+@keyframes puff {
+  0% { transform: scale(0); background: #fffbe8; box-shadow: 0 0 14px #f9d342; }
+  18% { transform: scale(1); background: #fff1a8; box-shadow: 0 0 14px #f9d342; }
+  34% { background: #f9d342; box-shadow: 0 0 0 2px #ec6a2a, 0 0 10px #ec6a2a; }
+  52% { background: #ec6a2a; box-shadow: 0 0 0 2px #7a2e1a; }
+  70% { transform: scale(1.08); background: #4a2d4f; box-shadow: 0 0 0 2px #2c1a33; opacity: 1; }
+  100% { transform: scale(1.25) translateY(-18%); background: #3a2a40; box-shadow: 0 0 0 2px #2c1a33; opacity: 0; }
+}
+@keyframes deb { from { transform: rotate(var(--a)) translateX(0); width: 3px; opacity: 1; } 40% { width: var(--l); } to { transform: rotate(var(--a)) translateX(var(--d)); width: var(--l); opacity: 0; } }
+@keyframes em { from { transform: rotate(var(--a)) translateX(0) scale(1); opacity: 1; } to { transform: rotate(var(--a)) translateX(var(--d)) scale(.3); opacity: 0; } }
+.board.shake { animation: shake .35s ease-in-out; }
+@keyframes shake { 20% { translate: -4px 2px; } 40% { translate: 4px -2px; } 60% { translate: -3px -1px; } 80% { translate: 2px 1px; } }
+@media (prefers-reduced-motion: reduce) { .boom { display: none; } .board.shake, .tool.bomb .fuse-spark { animation: none; } }
+
+.pad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+.pad button {
+  font: inherit; font-family: var(--display); font-weight: 500; font-size: clamp(1.3rem, 6vw, 1.8rem);
+  color: var(--accent); background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 0 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1;
+}
+.pad button small { font-family: var(--body); font-size: 0.62rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.pad button:disabled { opacity: 0.3; cursor: default; }
+.pad button:not(:disabled):active, .tool:active { transform: translateY(1px); }
+.hint-line { font-size: 0.8rem; color: var(--muted); text-align: center; margin: 0; }
+@media (max-width: 420px) { .pad { gap: 4px; } h1 { font-size: 1.6rem; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ---- Sprachen ---- */
+/* Japanisch: Luckiest Guy hat keine japanischen Zeichen, daher Dela Gothic One mit derselben 3D-Tiefe */
+.record-word.ja { line-height: 1.02; margin-bottom: 28px; translate: -9px 0; } /* nach Tinte zentriert: das Vollbreiten-！ hat rechts viel Leerraum */
+.record-word.ja .line span { font-family: "Dela Gothic One", sans-serif; -webkit-text-stroke: .012em var(--r-face); }
+.record-word .lj1 { font-size: min(19vw, 12.5vh, 6.5rem); margin-right: 1.1em; }
+.record-word .lj2 { font-size: min(23vw, 15.5vh, 8.25rem); margin-left: .35em; }
+.record-word.en { margin-bottom: 14px; translate: -14px 0; }
+.record-word.it { margin-bottom: 14px; translate: -18px 0; }
+.record-word.de { translate: -15px 0; }
+.record-word .li1 { font-size: min(20vw, 14vh, 7.25rem); margin-right: 1em; }
+.record-word .li2 { font-size: min(18.5vw, 14vh, 7.5rem); margin-left: .3em; }
+.record-word .le1 { font-size: min(17vw, 12vh, 6rem); margin-right: 1.2em; }
+.record-word .le2 { font-size: min(14vw, 12.5vh, 6.25rem); margin-left: .3em; }
+html:lang(ja) .start-btn { padding: 13px 30px; }
+html:lang(ja) .start-btn b { font-family: "Dela Gothic One", sans-serif; font-size: 1.75rem; letter-spacing: .02em; }
+html:lang(ja) .record-time span, html:lang(ja) .start-info, html:lang(ja) .label { letter-spacing: .04em; }
+.lang {
+  position: absolute; left: 0; right: 0; bottom: max(28px, env(safe-area-inset-bottom, 0px));
+  display: flex; justify-content: center; gap: 7px;
+}
+.lang button {
+  font: 700 0.92rem/1 var(--body); letter-spacing: .08em; color: var(--r-ink);
+  background: none; border: 0; border-radius: 999px; padding: 9px 14px 8px; cursor: pointer;
+}
+.lang button[aria-pressed="true"] { background: var(--r-plum); color: var(--r-face); box-shadow: 3.5px 3.5px 0 var(--r-side); }
+.lang button:focus { outline: none; }
+.lang button:focus-visible { outline: 3px solid var(--r-plum); outline-offset: 3px; }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Brain <span>Gym</span></h1>
+    <div class="stats">
+      <div class="stat"><span class="label" data-t="today">Heute</span><b id="today">1 / 3</b></div>
+      <div class="stat"><span class="label" data-t="best">Bestzeit</span><b id="best">–</b></div>
+      <div class="stat"><span class="label" data-t="time">Zeit</span><b id="timer">00:00</b></div>
+    </div>
+  </header>
+
+  <div class="levels" role="group" aria-label="Schwierigkeit" data-t-aria="levels">
+    <button data-level="leicht" id="lv-leicht" data-t="lv_leicht">Leicht</button>
+    <button data-level="mittel" id="lv-mittel" data-t="lv_mittel">Mittel</button>
+    <button data-level="schwer" id="lv-schwer" data-t="lv_schwer">Schwer</button>
+    <button data-level="experte" id="lv-experte" data-t="lv_experte">Experte</button>
+    <button class="new" id="new" data-t="newGame">Neues Spiel</button>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board" role="grid" aria-label="Sudoku-Raster" data-t-aria="grid"></div>
+    <p class="toast" id="toast" role="status" hidden></p>
+    <div class="overlay" id="win" hidden>
+      <div>
+        <h2 data-t="solved">Gelöst!</h2>
+        <p id="win-text"></p>
+        <button class="new" id="again">Nächstes Rätsel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tools">
+    <button class="tool" id="undo" title="Rückgängig (Strg+Z)" data-t-title="undoTitle">
+      <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-t="undo">Zurück</span>
+    </button>
+    <button class="tool" id="erase" title="Löschen (Entf)" data-t-title="eraseTitle">
+      <svg viewBox="0 0 24 24"><path d="m7 21-4-4L14 6l7 7-8 8Z"/><path d="M7 21h14"/><path d="m10 10 7 7"/></svg><span data-t="erase">Löschen</span>
+    </button>
+    <button class="tool" id="notes" aria-pressed="false" title="Notizen (N)" data-t-title="notesTitle">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span data-t="notes">Notizen</span><span class="badge" id="notes-state">AUS</span>
+    </button>
+    <button class="tool" id="hint" title="Tipp (H)" data-t-title="hintTitle">
+      <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg><span data-t="hint">Tipp</span>
+    </button>
+    <button class="tool bomb" id="bomb" title="Bombe: löscht alle Fehler (B)" data-t-title="bombTitle">
+      <svg class="bomb-ico" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M20.5 9.5c1.5-3 4-4.6 6.5-4.5" fill="none" stroke="#fff4dd" stroke-width="1.8" stroke-linecap="round"/>
+        <rect x="15.6" y="7.6" width="6.4" height="4.6" rx="1.3" transform="rotate(38 18.8 9.9)" fill="#4a2d6e"/>
+        <circle cx="14" cy="19" r="11.3" fill="#fff4dd"/>
+        <circle cx="14" cy="19" r="10" fill="#24133a"/>
+        <ellipse cx="9.4" cy="13.8" rx="2.6" ry="1.5" transform="rotate(-35 9.4 13.8)" fill="#fff" opacity=".55"/>
+        <ellipse cx="10.4" cy="19.6" rx="2.2" ry="2.7" fill="#fff4dd"/><ellipse cx="17.6" cy="19.6" rx="2.2" ry="2.7" fill="#fff4dd"/>
+        <circle cx="10.9" cy="20.2" r="1.25" fill="#24133a"/><circle cx="18.1" cy="20.2" r="1.25" fill="#24133a"/>
+        <circle cx="11.3" cy="19.6" r=".45" fill="#fff"/><circle cx="18.5" cy="19.6" r=".45" fill="#fff"/>
+        <g class="fuse-spark"><path d="M27 1.2l.9 2.6 2.7.1-2.2 1.6.8 2.6-2.2-1.5-2.2 1.5.8-2.6-2.2-1.6 2.7-.1z" fill="#f9d342"/><circle cx="27" cy="5" r="1.1" fill="#ec6a2a"/></g>
+      </svg>
+      <span data-t="bomb">Bombe</span><b class="count" id="bomb-n" aria-hidden="true">3</b>
+    </button>
+  </div>
+
+  <div class="pad" id="pad"></div>
+  <p class="hint-line" data-t="keys">Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen, B für Bombe. Orange heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.</p>
+</div>
+
+<div class="record" id="record" hidden role="dialog" aria-live="assertive" aria-label="New best time">
+  <div class="record-inner">
+    <div class="record-word" aria-hidden="true">
+      <div class="line l1"><span style="--i:0; rotate:-4deg">N</span><span style="--i:1; translate:0 6px">E</span><span style="--i:2">W</span></div>
+      <div class="line l2"><span style="--i:3">B</span><span style="--i:4; translate:0 -6px">E</span><span style="--i:5">S</span><span style="--i:6; translate:0 6px">T</span></div>
+      <div class="line l3"><span style="--i:7; translate:0 -4px">T</span><span style="--i:8">I</span><span style="--i:9; translate:0 6px">M</span><span style="--i:10">E</span><span style="--i:11; rotate:6deg">!</span></div>
+    </div>
+    <p class="sr-only">New best time!</p>
+    <div class="record-time"><b id="record-time">00:00</b><span id="record-prev"></span></div>
+    <p class="record-close" data-t="tapClose">Tippen zum Schließen</p>
+  </div>
+</div>
+
+<div class="record play" id="start" role="dialog" aria-label="Brain Gym">
+  <div class="record-inner">
+    <div class="record-word" aria-hidden="true">
+      <div class="line ls1"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">R</span><span style="--i:2">A</span><span style="--i:3; translate:0 -6px">I</span><span style="--i:4">N</span></div>
+      <div class="line ls2"><span style="--i:5; translate:0 -4px">G</span><span style="--i:6">Y</span><span style="--i:7; translate:0 6px">M</span></div>
+    </div>
+    <p class="sr-only">Brain Gym</p>
+    <p class="start-tag" data-t="tag">Sudoku · drei Rätsel am Tag</p>
+    <button class="start-btn" id="start-btn" type="button"><b id="start-label">Los geht’s!</b></button>
+    <p class="start-info" id="start-info"></p>
+  </div>
+  <div class="lang" id="lang" role="group" aria-label="Sprache" data-t-aria="language">
+    <button type="button" data-lang="de" lang="de">DE</button>
+    <button type="button" data-lang="en" lang="en">EN</button>
+    <button type="button" data-lang="it" lang="it">IT</button>
+    <button type="button" data-lang="ja" lang="ja">日本語</button>
+  </div>
+</div>
+
+<div class="record" id="daily" hidden role="dialog" aria-live="polite" aria-label="Bis morgen" data-t-aria="dailyAria">
+  <div class="record-inner">
+    <div class="record-word" id="daily-word" aria-hidden="true">
+      <div class="line l1 lb"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">I</span><span style="--i:2">S</span></div>
+      <div class="line lm"><span style="--i:3; translate:0 -4px">M</span><span style="--i:4">O</span><span style="--i:5; translate:0 6px">R</span><span style="--i:6">G</span><span style="--i:7; translate:0 -6px">E</span><span style="--i:8">N</span><span style="--i:9; rotate:6deg">!</span></div>
+    </div>
+    <p class="sr-only" data-t="dailySr">Bis morgen! Du hast heute alle drei Rätsel gespielt.</p>
+    <div class="record-time"><b id="daily-count">3 / 3</b><span id="daily-next"></span></div>
+    <p class="record-close" data-t="tapClose">Tippen zum Schließen</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Generator ----------
+  const LEVELS = { leicht: 40, mittel: 32, schwer: 27, experte: 23 };
+  const ROW = i => (i / 9) | 0, COL = i => i % 9, BOX = i => ((ROW(i) / 3) | 0) * 3 + ((COL(i) / 3) | 0);
+  const PEERS = Array.from({ length: 81 }, (_, i) => {
+    const s = new Set();
+    for (let j = 0; j < 81; j++) if (j !== i && (ROW(j) === ROW(i) || COL(j) === COL(i) || BOX(j) === BOX(i))) s.add(j);
+    return [...s];
+  });
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  // Bitmask solver: counts solutions up to `limit`; fills grid with the first one if `fill`.
+  function solve(grid, limit, fill) {
+    const g = grid.slice(), rows = new Array(9).fill(0), cols = new Array(9).fill(0), boxes = new Array(9).fill(0);
+    for (let i = 0; i < 81; i++) if (g[i]) { const b = 1 << g[i]; rows[ROW(i)] |= b; cols[COL(i)] |= b; boxes[BOX(i)] |= b; }
+    let count = 0, first = null;
+    const rec = () => {
+      let best = -1, bestMask = 0, bestN = 10;
+      for (let i = 0; i < 81; i++) if (!g[i]) {
+        const m = ~(rows[ROW(i)] | cols[COL(i)] | boxes[BOX(i)]) & 0x3fe;
+        let n = 0, x = m; while (x) { x &= x - 1; n++; }
+        if (n < bestN) { best = i; bestMask = m; bestN = n; if (n <= 1) break; }
+      }
+      if (best === -1) { count++; if (!first) first = g.slice(); return count >= limit; }
+      if (bestN === 0) return false;
+      const digits = [];
+      for (let d = 1; d <= 9; d++) if (bestMask & (1 << d)) digits.push(d);
+      if (fill) shuffle(digits);
+      const r = ROW(best), c = COL(best), bx = BOX(best);
+      for (const d of digits) {
+        const b = 1 << d;
+        g[best] = d; rows[r] |= b; cols[c] |= b; boxes[bx] |= b;
+        if (rec()) return true;
+        g[best] = 0; rows[r] &= ~b; cols[c] &= ~b; boxes[bx] &= ~b;
+      }
+      return false;
+    };
+    rec();
+    return { count, solution: first };
+  }
+
+  function generate(level) {
+    const solution = solve(new Array(81).fill(0), 1, true).solution;
+    const puzzle = solution.slice();
+    const target = LEVELS[level];
+    let clues = 81;
+    for (const i of shuffle([...Array(81).keys()])) {
+      if (clues <= target) break;
+      const keep = puzzle[i];
+      puzzle[i] = 0;
+      if (solve(puzzle, 2, false).count !== 1) puzzle[i] = keep; else clues--;
+    }
+    return { puzzle, solution };
+  }
+
+  // ---------- State ----------
+  const $ = id => document.getElementById(id);
+  const board = $('board'), pad = $('pad');
+  let S; // game state
+  let timerId = null;
+  let pendingDaily = false; // „Bis morgen!“ nach der Rekord-Feier zeigen
+
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem('sudoku-state') || 'null'); } catch { return null; } },
+    set(v) { try { localStorage.setItem('sudoku-state', JSON.stringify(v)); } catch {} },
+  };
+
+  // ---------- Tageslimit ----------
+  const LIMIT = 3;
+  const BOMBS = 3; // Bomben pro Rätsel
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  function daily() {
+    try { const v = JSON.parse(localStorage.getItem('sudoku-daily') || 'null'); if (v && v.date === today()) return v; } catch {}
+    return { date: today(), count: 0 };
+  }
+  function setDaily(v) { try { localStorage.setItem('sudoku-daily', JSON.stringify(v)); } catch {} }
+  const limitReached = () => daily().count >= LIMIT;
+
+  // Startet ein neues Rätsel, solange das Tageskontingent reicht; sonst kommt „Bis morgen!“.
+  // Gezählt wird ein Rätsel erst beim ersten Spielzug, Level wechseln oder neu mischen kostet nichts.
+  function requestNewGame(level) {
+    if (limitReached()) { showDaily(); return; }
+    newGame(level);
+  }
+  function countIfNew() {
+    if (S.counted !== false) return; // ältere Spielstände wurden schon beim Start gezählt
+    const d = daily(); d.count++; setDaily(d);
+    S.counted = true;
+  }
+  // Nummer des aktuellen Rätsels heute: ein noch nicht gezähltes Rätsel ist das nächste
+  const puzzleNo = () => Math.min(Math.max(daily().count + (S && S.counted === false ? 1 : 0), 1), LIMIT);
+
+  function untilTomorrow() {
+    const now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const mins = Math.max(1, Math.ceil((next - now) / 60000));
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return tr().until(h, m);
+  }
+
+  function newGame(level) {
+    pendingDaily = false;
+    const { puzzle, solution } = generate(level);
+    S = { level, puzzle, solution, values: puzzle.slice(), notes: new Array(81).fill(0),
+          selected: puzzle.indexOf(0), notesMode: false, hints: 0, bombs: BOMBS, seconds: 0, history: [], solved: false, counted: false };
+    closeRecord(); closeDaily(); render(); save(); startTimer();
+  }
+
+  function save() { store.set(S); }
+
+
+  // ---------- Sprachen ----------
+  const TEXT = {
+    de: {
+      today: 'Heute', best: 'Bestzeit', time: 'Zeit', levels: 'Schwierigkeit', grid: 'Sudoku-Raster', language: 'Sprache',
+      lv_leicht: 'Leicht', lv_mittel: 'Mittel', lv_schwer: 'Schwer', lv_experte: 'Experte',
+      newGame: 'Neues Spiel', solved: 'Gelöst!', next: 'Nächstes Rätsel', doneToday: 'Für heute fertig',
+      undo: 'Zurück', erase: 'Löschen', notes: 'Notizen', hint: 'Tipp', on: 'AN', off: 'AUS',
+      undoTitle: 'Rückgängig (Strg+Z)', eraseTitle: 'Löschen (Entf)', notesTitle: 'Notizen (N)', hintTitle: 'Tipp (H)',
+      bomb: 'Bombe', bombTitle: 'Bombe: löscht alle Fehler (B)', bombHit: n => n === 1 ? 'Ein Fehler weggesprengt!' : `${n} Fehler weggesprengt!`, bombNone: 'Keine Fehler – die Bombe verpufft.', bombLeft: n => `Bombe, noch ${n}`,
+      keys: 'Tastatur: Ziffern 1–9, Pfeiltasten, N für Notizen, Entf zum Löschen, B für Bombe. Orange heißt: Die Zahl steht doppelt in Zeile, Spalte oder Block.',
+      tapClose: 'Tippen zum Schließen', tag: 'Sudoku · drei Rätsel am Tag',
+      go: 'Los geht’s!', resume: 'Weiterspielen',
+      startInfo: (n, l) => `Heute: Rätsel ${n} von ${l}`, allDone: l => `Heute alle ${l} Rätsel geschafft`,
+      dailyAria: 'Bis morgen', dailySr: 'Bis morgen! Du hast heute alle drei Rätsel gespielt.',
+      until: (h, m) => h ? `Neue Rätsel in ${h} Std ${m} Min` : `Neue Rätsel in ${m} Min`,
+      winText: (lv, t, b) => `${lv} in ${t}` + (b ? ` · Bestzeit ${b}` : ''),
+      prev: t => `vorher ${t}`, firstBest: lv => `erste Bestzeit · ${lv}`,
+      digit: d => `Ziffer ${d}`, cell: (r, c, v) => `Zeile ${r}, Spalte ${c}: ${v || 'leer'}`,
+      where: { row: 'in dieser Zeile', col: 'in dieser Spalte', box: 'in diesem Block' },
+      hConflict: 'Erst diesen Konflikt lösen.',
+      hSingle: 'Hier passt nur noch eine Zahl.',
+      hHidden: w => `Eine Zahl passt ${w} nur hier.`,
+      hFewest: 'Hier gibt es die wenigsten Möglichkeiten.',
+      cSingle: 'Hier passt nur noch eine Zahl. Prüf Zeile, Spalte und Block.',
+      cHidden: w => `Eine der fehlenden Zahlen passt ${w} nur in dieses Feld.`,
+      cHard: n => `Hier passen noch ${n} Zahlen. Nochmal „Tipp“ zeigt ein leichteres Feld.`,
+    },
+    en: {
+      today: 'Today', best: 'Best', time: 'Time', levels: 'Difficulty', grid: 'Sudoku grid', language: 'Language',
+      lv_leicht: 'Easy', lv_mittel: 'Medium', lv_schwer: 'Hard', lv_experte: 'Expert',
+      newGame: 'New game', solved: 'Solved!', next: 'Next puzzle', doneToday: 'Done for today',
+      undo: 'Undo', erase: 'Erase', notes: 'Notes', hint: 'Hint', on: 'ON', off: 'OFF',
+      undoTitle: 'Undo (Ctrl+Z)', eraseTitle: 'Erase (Del)', notesTitle: 'Notes (N)', hintTitle: 'Hint (H)',
+      bomb: 'Bomb', bombTitle: 'Bomb: clears all mistakes (B)', bombHit: n => n === 1 ? '1 mistake blown away!' : `${n} mistakes blown away!`, bombNone: 'No mistakes – the bomb fizzles out.', bombLeft: n => `Bomb, ${n} left`,
+      keys: 'Keyboard: digits 1–9, arrow keys, N for notes, Del to erase, B for bomb. Orange means the number appears twice in a row, column or box.',
+      tapClose: 'Tap to close', tag: 'Sudoku · three puzzles a day',
+      go: 'Let’s go!', resume: 'Continue',
+      startInfo: (n, l) => `Today: puzzle ${n} of ${l}`, allDone: l => `All ${l} puzzles done today`,
+      dailyAria: 'See you tomorrow', dailySr: 'See you tomorrow! You have played all three puzzles today.',
+      until: (h, m) => h ? `New puzzles in ${h} h ${m} min` : `New puzzles in ${m} min`,
+      winText: (lv, t, b) => `${lv} in ${t}` + (b ? ` · Best ${b}` : ''),
+      prev: t => `previous ${t}`, firstBest: lv => `first best time · ${lv}`,
+      digit: d => `Digit ${d}`, cell: (r, c, v) => `Row ${r}, column ${c}: ${v || 'empty'}`,
+      where: { row: 'in this row', col: 'in this column', box: 'in this box' },
+      hConflict: 'Fix this conflict first.',
+      hSingle: 'Only one number fits here.',
+      hHidden: w => `A number fits only here ${w}.`,
+      hFewest: 'This cell has the fewest options.',
+      cSingle: 'Only one number fits here. Check the row, column and box.',
+      cHidden: w => `One of the missing numbers fits only in this cell ${w}.`,
+      cHard: n => `${n} numbers still fit here. Tap “Hint” again for an easier cell.`,
+    },
+    it: {
+      today: 'Oggi', best: 'Record', time: 'Tempo', levels: 'Difficoltà', grid: 'Griglia del sudoku', language: 'Lingua',
+      lv_leicht: 'Facile', lv_mittel: 'Medio', lv_schwer: 'Difficile', lv_experte: 'Esperto',
+      newGame: 'Nuova partita', solved: 'Risolto!', next: 'Prossimo puzzle', doneToday: 'Finito per oggi',
+      undo: 'Annulla', erase: 'Cancella', notes: 'Note', hint: 'Aiuto', on: 'ON', off: 'OFF',
+      undoTitle: 'Annulla (Ctrl+Z)', eraseTitle: 'Cancella (Canc)', notesTitle: 'Note (N)', hintTitle: 'Aiuto (H)',
+      bomb: 'Bomba', bombTitle: 'Bomba: cancella tutti gli errori (B)', bombHit: n => n === 1 ? 'Un errore spazzato via!' : `${n} errori spazzati via!`, bombNone: 'Nessun errore – la bomba fa cilecca.', bombLeft: n => `Bomba, ne restano ${n}`,
+      keys: 'Tastiera: cifre 1–9, frecce, N per le note, Canc per cancellare, B per la bomba. Arancione significa che il numero compare due volte nella riga, nella colonna o nel riquadro.',
+      tapClose: 'Tocca per chiudere', tag: 'Sudoku · tre puzzle al giorno',
+      go: 'Si parte!', resume: 'Continua',
+      startInfo: (n, l) => `Oggi: puzzle ${n} di ${l}`, allDone: l => `Oggi tutti i ${l} puzzle completati`,
+      dailyAria: 'A domani', dailySr: 'A domani! Oggi hai giocato tutti e tre i puzzle.',
+      until: (h, m) => h ? `Nuovi puzzle tra ${h} h ${m} min` : `Nuovi puzzle tra ${m} min`,
+      winText: (lv, t, b) => `${lv} in ${t}` + (b ? ` · Record ${b}` : ''),
+      prev: t => `prima ${t}`, firstBest: lv => `primo record · ${lv}`,
+      digit: d => `Cifra ${d}`, cell: (r, c, v) => `Riga ${r}, colonna ${c}: ${v || 'vuota'}`,
+      where: { row: 'in questa riga', col: 'in questa colonna', box: 'in questo riquadro' },
+      hConflict: 'Prima risolvi questo conflitto.',
+      hSingle: 'Qui ci sta un solo numero.',
+      hHidden: w => `Un numero ci sta solo qui ${w}.`,
+      hFewest: 'Questa casella ha meno possibilità.',
+      cSingle: 'Qui ci sta un solo numero. Controlla riga, colonna e riquadro.',
+      cHidden: w => `Uno dei numeri mancanti ${w} ci sta solo in questa casella.`,
+      cHard: n => `Qui ci stanno ancora ${n} numeri. Tocca di nuovo “Aiuto” per una casella più facile.`,
+    },
+    ja: {
+      today: '今日', best: 'ベスト', time: 'タイム', levels: '難易度', grid: '数独の盤面', language: '言語',
+      lv_leicht: '初級', lv_mittel: '中級', lv_schwer: '上級', lv_experte: '達人',
+      newGame: '新しい問題', solved: 'クリア！', next: '次の問題', doneToday: '今日はここまで',
+      undo: '戻す', erase: '消す', notes: 'メモ', hint: 'ヒント', on: 'オン', off: 'オフ',
+      undoTitle: '元に戻す (Ctrl+Z)', eraseTitle: '消す (Del)', notesTitle: 'メモ (N)', hintTitle: 'ヒント (H)',
+      bomb: 'ボム', bombTitle: 'ボム：まちがいを全部消す (B)', bombHit: n => `まちがいを${n}個ふっとばした！`, bombNone: 'まちがいなし。ボムは不発。', bombLeft: n => `ボム 残り${n}`,
+      keys: 'キーボード：数字 1–9、矢印キー、N でメモ、Del で消去、B でボム。オレンジは、行・列・ブロックに同じ数字が重なっている印です。',
+      tapClose: 'タップして閉じる', tag: '数独・1日3問',
+      go: 'スタート！', resume: 'つづける',
+      startInfo: (n, l) => `今日：${l}問中${n}問目`, allDone: l => `今日の${l}問はすべてクリア`,
+      dailyAria: 'また明日', dailySr: 'また明日！今日の3問はすべて遊びました。',
+      until: (h, m) => h ? `次の問題まで ${h}時間${m}分` : `次の問題まで ${m}分`,
+      winText: (lv, t, b) => `${lv} ${t}` + (b ? ` · ベスト ${b}` : ''),
+      prev: t => `前回 ${t}`, firstBest: lv => `初めてのベスト · ${lv}`,
+      digit: d => `数字 ${d}`, cell: (r, c, v) => `${r}行${c}列：${v || '空き'}`,
+      where: { row: 'この行', col: 'この列', box: 'このブロック' },
+      hConflict: 'まずこの重なりを直そう。',
+      hSingle: 'ここに入る数字はひとつだけ。',
+      hHidden: w => `${w}で、ある数字はここにしか入らない。`,
+      hFewest: 'ここがいちばん候補の少ないマス。',
+      cSingle: 'ここに入る数字はひとつだけ。行・列・ブロックを確認しよう。',
+      cHidden: w => `${w}で、足りない数字のひとつはこのマスにしか入らない。`,
+      cHard: n => `ここにはまだ${n}個の数字が入る。もう一度「ヒント」で簡単なマスへ。`,
+    },
+  };
+  // „Bis morgen!“-Schriftzug je Sprache (Logo und „NEW BEST TIME!“ bleiben überall englisch)
+  const DAILY_WORD = {
+    de: ['de', `<div class="line l1 lb"><span style="--i:0; rotate:-4deg">B</span><span style="--i:1; translate:0 6px">I</span><span style="--i:2">S</span></div>
+      <div class="line lm"><span style="--i:3; translate:0 -4px">M</span><span style="--i:4">O</span><span style="--i:5; translate:0 6px">R</span><span style="--i:6">G</span><span style="--i:7; translate:0 -6px">E</span><span style="--i:8">N</span><span style="--i:9; rotate:6deg">!</span></div>`],
+    en: ['en', `<div class="line le1"><span style="--i:0; rotate:-4deg">S</span><span style="--i:1; translate:0 6px">E</span><span style="--i:2">E</span>&nbsp;<span style="--i:3">Y</span><span style="--i:4; translate:0 -4px">A</span></div>
+      <div class="line le2"><span style="--i:5; translate:0 -4px">T</span><span style="--i:6">O</span><span style="--i:7; translate:0 6px">M</span><span style="--i:8">O</span><span style="--i:9; translate:0 -6px">R</span><span style="--i:10">R</span><span style="--i:11">O</span><span style="--i:12; translate:0 6px">W</span><span style="--i:13; rotate:6deg">!</span></div>`],
+    it: ['it', `<div class="line li1"><span style="--i:0; rotate:-4deg">A</span></div>
+      <div class="line li2"><span style="--i:1; translate:0 -4px">D</span><span style="--i:2">O</span><span style="--i:3; translate:0 6px">M</span><span style="--i:4">A</span><span style="--i:5; translate:0 -6px">N</span><span style="--i:6">I</span><span style="--i:7; rotate:6deg">!</span></div>`],
+    ja: ['ja', `<div class="line lj1"><span style="--i:0; rotate:-4deg">ま</span><span style="--i:1; translate:0 6px">た</span></div>
+      <div class="line lj2"><span style="--i:2; translate:0 -4px">明</span><span style="--i:3">日</span><span style="--i:4; rotate:6deg">！</span></div>`],
+  };
+  const LANGS = ['de', 'en', 'it', 'ja'];
+  function initialLang() {
+    try { const v = localStorage.getItem('brain-gym-lang'); if (LANGS.includes(v)) return v; } catch {}
+    // erster Start: Gerätesprache übernehmen, sonst Englisch
+    for (const l of navigator.languages || [navigator.language || '']) {
+      const code = String(l).slice(0, 2).toLowerCase();
+      if (LANGS.includes(code)) return code;
+    }
+    return 'en';
+  }
+  let lang = initialLang();
+  const tr = () => TEXT[lang];
+
+  function applyLang() {
+    const T = tr();
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-t]').forEach(el => { el.textContent = T[el.dataset.t]; });
+    document.querySelectorAll('[data-t-title]').forEach(el => { el.title = T[el.dataset.tTitle]; });
+    document.querySelectorAll('[data-t-aria]').forEach(el => { el.setAttribute('aria-label', T[el.dataset.tAria]); });
+    padBtns.forEach((b, k) => b.setAttribute('aria-label', T.digit(k + 1)));
+    const [cls, html] = DAILY_WORD[lang];
+    const w = $('daily-word'); w.className = 'record-word' + (cls ? ' ' + cls : ''); w.innerHTML = html;
+    document.querySelectorAll('#lang [data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === lang));
+    if (S) { render(); updateStart(); }
+  }
+  function setLang(l) {
+    lang = l;
+    try { localStorage.setItem('brain-gym-lang', l); } catch {}
+    applyLang();
+  }
+  document.querySelectorAll('#lang [data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+
+  // ---------- Board DOM ----------
+  const cells = [];
+  for (let i = 0; i < 81; i++) {
+    const b = document.createElement('button');
+    b.className = 'cell'; b.type = 'button'; b.setAttribute('role', 'gridcell'); b.dataset.i = i;
+    b.addEventListener('click', () => { S.selected = i; render(); });
+    board.appendChild(b); cells.push(b);
+  }
+  const padBtns = [];
+  for (let d = 1; d <= 9; d++) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.innerHTML = `${d}<small></small>`; b.setAttribute('aria-label', tr().digit(d));
+    b.addEventListener('click', () => input(d));
+    pad.appendChild(b); padBtns.push(b);
+  }
+
+  function render() {
+    const sel = S.selected, selVal = sel >= 0 ? S.values[sel] : 0;
+    const peerSet = new Set(sel >= 0 ? PEERS[sel] : []);
+    const counts = new Array(10).fill(0);
+    for (let i = 0; i < 81; i++) if (S.values[i]) counts[S.values[i]]++;
+    for (let i = 0; i < 81; i++) {
+      const c = cells[i], v = S.values[i];
+      c.className = 'cell';
+      if (S.puzzle[i]) c.classList.add('given');
+      if (peerSet.has(i)) c.classList.add('peer');
+      if (selVal && v === selVal) c.classList.add('same');
+      if (i === sel) c.classList.add('selected');
+      if (i === pulseCell) c.classList.add('pulse');
+      if (v && PEERS[i].some(p => S.values[p] === v)) c.classList.add(S.puzzle[i] ? 'conflict' : 'wrong');
+      if (v) { c.textContent = v; }
+      else if (S.notes[i]) {
+        let h = '<span class="notes">';
+        for (let d = 1; d <= 9; d++) h += `<i class="${selVal === d ? 'hl' : ''}">${S.notes[i] & (1 << d) ? d : ''}</i>`;
+        c.innerHTML = h + '</span>';
+      } else c.textContent = '';
+      c.setAttribute('aria-label', tr().cell(ROW(i) + 1, COL(i) + 1, v));
+      c.tabIndex = i === sel ? 0 : -1;
+    }
+    padBtns.forEach((b, k) => { const left = 9 - counts[k + 1]; b.disabled = left <= 0 || S.solved; b.querySelector('small').textContent = left > 0 ? left : '✓'; });
+    const best = bests()[S.level];
+    document.querySelectorAll('.levels [data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === S.level));
+    $('notes').setAttribute('aria-pressed', S.notesMode);
+    $('bomb-n').textContent = S.bombs;
+    $('bomb').disabled = S.solved || S.bombs <= 0;
+    $('bomb').setAttribute('aria-label', tr().bombLeft(S.bombs));
+    $('notes-state').textContent = S.notesMode ? tr().on : tr().off;
+    $('best').textContent = best ? fmt(best) : '–';
+    $('today').textContent = `${puzzleNo()} / ${LIMIT}`;
+    $('again').textContent = limitReached() ? tr().doneToday : tr().next;
+    $('timer').textContent = fmt(S.seconds);
+    $('win').hidden = !S.solved;
+    if (S.solved) $('win-text').textContent = tr().winText(label(S.level), fmt(S.seconds), best && fmt(best));
+  }
+
+  // ---------- Bestzeiten ----------
+  function bests() { try { return JSON.parse(localStorage.getItem('sudoku-best') || '{}') || {}; } catch { return {}; } }
+  function saveBest(level, seconds) {
+    const b = bests(); b[level] = seconds;
+    try { localStorage.setItem('sudoku-best', JSON.stringify(b)); } catch {}
+  }
+
+  // ---------- Rekord-Feier ----------
+  const rec = $('record');
+  let recTimer = null;
+  function celebrate(seconds, previous) {
+    $('record-time').textContent = fmt(seconds);
+    $('record-prev').textContent = previous ? tr().prev(fmt(previous)) : tr().firstBest(label(S.level));
+    rec.hidden = false;
+    rec.classList.remove('play'); void rec.offsetWidth; rec.classList.add('play');
+    clearTimeout(recTimer);
+    recTimer = setTimeout(closeRecord, 5200);
+  }
+  function closeRecord() {
+    clearTimeout(recTimer);
+    const wasOpen = !rec.hidden;
+    rec.hidden = true; rec.classList.remove('play');
+    if (wasOpen && pendingDaily) { pendingDaily = false; showDaily(); }
+  }
+  rec.addEventListener('click', closeRecord);
+
+  // ---------- „Bis morgen!“ ----------
+  const dailyEl = $('daily');
+  function showDaily() {
+    $('daily-count').textContent = `${LIMIT} / ${LIMIT}`;
+    $('daily-next').textContent = untilTomorrow();
+    dailyEl.hidden = false;
+    dailyEl.classList.remove('play'); void dailyEl.offsetWidth; dailyEl.classList.add('play');
+  }
+  function closeDaily() { dailyEl.hidden = true; dailyEl.classList.remove('play'); }
+  dailyEl.addEventListener('click', closeDaily);
+
+  const label = l => tr()['lv_' + l];
+  const fmt = s => `${String((s / 60) | 0).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  // ---------- Actions ----------
+  function pushHistory(i) { S.history.push({ i, v: S.values[i], n: S.notes.slice() }); if (S.history.length > 300) S.history.shift(); }
+
+  function input(d) {
+    const i = S.selected;
+    if (i < 0 || S.puzzle[i] || S.solved) return;
+    countIfNew();
+    if (S.notesMode) {
+      if (S.values[i]) return;
+      pushHistory(i);
+      S.notes[i] ^= 1 << d;
+    } else {
+      if (S.values[i] === d) return;
+      pushHistory(i);
+      S.values[i] = d; S.notes[i] = 0;
+      for (const p of PEERS[i]) S.notes[p] &= ~(1 << d);
+      checkWin();
+    }
+    render(); save();
+  }
+
+  function erase() {
+    const i = S.selected;
+    if (i < 0 || S.puzzle[i] || S.solved) return;
+    if (!S.values[i] && !S.notes[i]) return;
+    pushHistory(i); S.values[i] = 0; S.notes[i] = 0; render(); save();
+  }
+
+  function undo() {
+    if (S.solved) return;
+    const h = S.history.pop(); if (!h) return;
+    S.values[h.i] = h.v; S.notes = h.n; S.selected = h.i; render(); save();
+  }
+
+  // ---------- Tipp ----------
+  // Der Tipp verrät nie eine Zahl: Hinweis zum gewählten leeren Feld oder Sprung zum leichtesten Feld.
+  const UNITS = [];
+  for (let r = 0; r < 9; r++) UNITS.push({ name: 'row', cells: [...Array(9)].map((_, c) => r * 9 + c) });
+  for (let c = 0; c < 9; c++) UNITS.push({ name: 'col', cells: [...Array(9)].map((_, r) => r * 9 + c) });
+  for (let b = 0; b < 9; b++) UNITS.push({ name: 'box', cells: [...Array(9)].map((_, k) => (((b / 3) | 0) * 3 + ((k / 3) | 0)) * 9 + (b % 3) * 3 + (k % 3)) });
+  const candidates = i => { let m = 0x3fe; for (const p of PEERS[i]) if (S.values[p]) m &= ~(1 << S.values[p]); return m; };
+  const bits = m => { let n = 0; while (m) { m &= m - 1; n++; } return n; };
+  const hasConflict = i => S.values[i] && PEERS[i].some(p => S.values[p] === S.values[i]);
+
+  function easiestCell() {
+    // bei zwei eigenen Zahlen im Konflikt auf die falsche zeigen, sonst hängt der Tipp an der richtigen fest
+    const conflict = [...Array(81).keys()].find(i => !S.puzzle[i] && hasConflict(i) && S.values[i] !== S.solution[i]);
+    if (conflict !== undefined) return { i: conflict, kind: 'conflict', msg: tr().hConflict };
+    const empty = [...Array(81).keys()].filter(i => !S.values[i]);
+    if (!empty.length) return null;
+    const single = empty.find(i => bits(candidates(i)) === 1);
+    if (single !== undefined) return { i: single, msg: tr().hSingle };
+    for (const u of UNITS) for (let d = 1; d <= 9; d++) {
+      if (u.cells.some(k => S.values[k] === d)) continue;
+      const spots = u.cells.filter(k => !S.values[k] && candidates(k) & (1 << d));
+      if (spots.length === 1) return { i: spots[0], msg: tr().hHidden(tr().where[u.name]) };
+    }
+    let best = empty[0];
+    for (const i of empty) if (bits(candidates(i)) < bits(candidates(best))) best = i;
+    return { i: best, msg: tr().hFewest };
+  }
+
+  let pulseCell = -1, pulseTimer = null, toastTimer = null;
+  function toast(text) {
+    const t = $('toast'); t.textContent = text; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+  }
+
+  // Hinweis für ein bestimmtes leeres Feld, ohne eine Zahl zu nennen
+  function cellHint(i) {
+    const n = bits(candidates(i));
+    if (n === 1) return tr().cSingle;
+    for (const u of UNITS) {
+      if (!u.cells.includes(i)) continue;
+      for (let d = 1; d <= 9; d++) {
+        if (!(candidates(i) & (1 << d)) || u.cells.some(k => S.values[k] === d)) continue;
+        const spots = u.cells.filter(k => !S.values[k] && candidates(k) & (1 << d));
+        if (spots.length === 1) {
+          return tr().cHidden(tr().where[u.name]);
+        }
+      }
+    }
+    return null; // schwieriges Feld
+  }
+  let hardHintCell = -1; // zuletzt als schwierig gemeldetes Feld
+
+  // Der Tipp setzt nie eine Zahl ein: er gibt einen Hinweis zum ausgewählten leeren Feld
+  // oder zeigt, wo es am leichtesten weitergeht.
+  function hint() {
+    if (S.solved) return;
+    const conflict = easiestCell();
+    let target, msg, hard = false;
+    const sel = S.selected;
+    const selEmpty = sel >= 0 && !S.values[sel];
+    if (conflict && conflict.kind === 'conflict') { target = conflict.i; msg = conflict.msg; }
+    else if (selEmpty && (msg = cellHint(sel))) { target = sel; }
+    else if (selEmpty && hardHintCell !== sel) {
+      // erst sagen, dass das Feld schwierig ist; ein zweiter Tipp springt zu einem leichteren
+      target = sel; hardHintCell = sel; hard = true;
+      msg = tr().cHard(bits(candidates(sel)));
+    }
+    else if (conflict) { target = conflict.i; msg = conflict.msg; }
+    else return;
+    if (!hard) hardHintCell = -1;
+    S.selected = target; pulseCell = target;
+    clearTimeout(pulseTimer); pulseTimer = setTimeout(() => { pulseCell = -1; render(); }, 1800);
+    render(); save(); toast(msg);
+  }
+
+  // Bombe: sprengt alle falschen Zahlen (verglichen mit der Lösung) weg, die Felder sind danach leer.
+  // Sie ist danach verbraucht, auch wenn es keine Fehler gab.
+  const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function boomAt(i) {
+    const wrap = board.parentElement, w = wrap.getBoundingClientRect(), r = cells[i].getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'boom';
+    el.style.cssText = `left:${r.left - w.left}px;top:${r.top - w.top}px;width:${r.width}px;height:${r.height}px`;
+    const cw = r.width * 0.85, rnd = (a, b) => a + Math.random() * (b - a);
+    let h = '<i class="core"></i>';
+    // Feuerball: 12 Wolken rund um die Mitte, leicht versetzt nacheinander
+    for (let k = 0; k < 12; k++) {
+      const ang = k / 11 * Math.PI * 2 + rnd(-.3, .3), dist = k === 0 ? 0 : cw * (k < 6 ? rnd(.27, .45) : rnd(.54, .77)); // alles 10 % kleiner als zuerst
+      h += `<i class="puff" style="--x:${Math.cos(ang) * dist}px;--y:${Math.sin(ang) * dist}px;--s:${cw * (k < 6 ? rnd(.81, 1.08) : rnd(.54, .81))}px;--t:${k * 15}ms"></i>`;
+    }
+    for (let k = 0; k < 5; k++) h += `<i class="deb" style="--a:${k * 72 + rnd(-20, 20)}deg;--d:${cw * rnd(.9, 1.35)}px;--l:${cw * rnd(.27, .45)}px"></i>`;
+    for (let k = 0; k < 8; k++) h += `<i class="em" style="--a:${k * 45 + rnd(-15, 15)}deg;--d:${cw * rnd(.81, 1.44)}px"></i>`;
+    el.innerHTML = h;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 1400);
+  }
+  function bomb() {
+    if (S.solved || S.bombs <= 0) return;
+    S.bombs--;
+    const wrong = [...Array(81).keys()].filter(i => S.values[i] && !S.puzzle[i] && S.values[i] !== S.solution[i]);
+    if (!wrong.length) { render(); save(); toast(tr().bombNone); return; }
+    wrong.forEach(boomAt);
+    board.classList.remove('shake'); void board.offsetWidth; board.classList.add('shake');
+    // Zahlen verschwinden mitten im Blitz
+    setTimeout(() => {
+      for (const i of wrong) { S.values[i] = 0; S.notes[i] = 0; }
+      S.history = []; // Rückgängig soll die gesprengten Fehler nicht zurückholen
+      render(); save(); toast(tr().bombHit(wrong.length));
+    }, reduceMotion() ? 0 : 160);
+    render(); save();
+  }
+
+  function checkWin() {
+    if (!S.values.every((v, k) => v === S.solution[k])) return;
+    S.solved = true; stopTimer();
+    pendingDaily = limitReached();
+    const prev = bests()[S.level];
+    if (!prev || S.seconds < prev) { saveBest(S.level, S.seconds); celebrate(S.seconds, prev); }
+    else if (pendingDaily) setTimeout(() => { if (pendingDaily) { pendingDaily = false; showDaily(); } }, 1400);
+  }
+
+  function startTimer() {
+    stopTimer();
+    if (S.solved) return;
+    timerId = setInterval(() => { if (document.hidden || !$('start').hidden) return; S.seconds++; $('timer').textContent = fmt(S.seconds); if (S.seconds % 5 === 0) save(); }, 1000);
+  }
+  function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; }
+
+  // ---------- Wiring ----------
+  document.querySelectorAll('.levels [data-level]').forEach(b => b.addEventListener('click', () => requestNewGame(b.dataset.level)));
+  $('new').addEventListener('click', () => requestNewGame(S.level));
+  $('again').addEventListener('click', () => requestNewGame(S.level));
+  $('undo').addEventListener('click', undo);
+  $('erase').addEventListener('click', erase);
+  $('hint').addEventListener('click', hint);
+  $('bomb').addEventListener('click', bomb);
+  $('notes').addEventListener('click', () => { S.notesMode = !S.notesMode; render(); save(); });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('.levels')) return;
+    if (!$('start').hidden) return; // Start-Bildschirm offen: Eingaben gehen nicht ins Raster
+    const k = e.key;
+    if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[1-9]$/.test(k)) { input(+k); e.preventDefault(); return; }
+    if (k === 'Backspace' || k === 'Delete' || k === '0') { erase(); e.preventDefault(); return; }
+    if (k === 'n' || k === 'N') { S.notesMode = !S.notesMode; render(); save(); return; }
+    if (k === 'h' || k === 'H') { hint(); return; }
+    if (k === 'b' || k === 'B') { bomb(); return; }
+    const mv = { ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1 }[k];
+    if (mv) {
+      e.preventDefault();
+      let i = S.selected < 0 ? 40 : S.selected;
+      if (mv === -1 && COL(i) === 0) i += 8; else if (mv === 1 && COL(i) === 8) i -= 8; else i = (i + mv + 81) % 81;
+      S.selected = i; render(); cells[i].focus();
+    }
+  });
+
+  function updateStart() {
+    const done = limitReached() && S.solved;
+    const inProgress = !S.solved && S.values.some((v, k) => v && !S.puzzle[k]);
+    $('start-info').textContent = done ? tr().allDone(LIMIT) : tr().startInfo(puzzleNo(), LIMIT);
+    $('start-label').textContent = inProgress ? tr().resume : tr().go;
+  }
+
+  function start(data) {
+    const saved = (data && data.S) || store.get();
+    if (saved && saved.solution && saved.values) {
+      S = saved; if (S.bombs === undefined) S.bombs = BOMBS; delete S.jokers; delete S.jokerCell; render(); startTimer();
+    } else if (limitReached()) {
+      newGame('mittel'); S.counted = true; // Spielstand fehlt, Kontingent aber verbraucht
+    } else requestNewGame('mittel');
+
+    // Start-Bildschirm: zeigt den Tagesstand; „Bis morgen!“ erst nach dem Tippen auf Start
+    applyLang();
+    $('start-btn').addEventListener('click', () => {
+      const el = $('start'); el.hidden = true; el.classList.remove('play');
+      if (S.solved && limitReached()) showDaily();
+    });
+
+    // Vorschau ohne echtes Ereignis: Link mit #rekord oder #morgen öffnen
+    const demo = () => {
+      if (location.hash === '#rekord') { $('start').hidden = true; celebrate(312, 405); }
+      if (location.hash === '#morgen') { $('start').hidden = true; showDaily(); }
+    };
+    demo(); window.addEventListener('hashchange', demo);
+  }
+  window.claude?.hot?.snapshot?.(() => ({ S }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
